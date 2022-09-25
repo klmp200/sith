@@ -27,14 +27,17 @@ from datetime import datetime
 import hmac
 import base64
 from OpenSSL import crypto
+from django.contrib.auth.decorators import login_required
 
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, View
 from django.http import HttpResponse, HttpResponseRedirect
 from django.core.exceptions import SuspiciousOperation
 from django.db import transaction, DataError
+from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
 from django.conf import settings
+from django.shortcuts import get_object_or_404
 
 from counter.models import Customer, Counter, ProductType, Selling
 from eboutic.models import Basket, Invoice, InvoiceItem
@@ -55,25 +58,15 @@ class EbouticMain(TemplateView):
         request.session["basket_id"] = self.basket.id
         request.session.modified = True
 
+    @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return HttpResponseRedirect(
-                reverse_lazy("core:login", args=self.args, kwargs=kwargs)
-                + "?next="
-                + request.path
-            )
-        self.object = Counter.objects.filter(type="EBOUTIC").first()
+        self.object = get_object_or_404(Counter, type="EBOUTIC")
         self.make_basket(request)
         return super(EbouticMain, self).get(request, *args, **kwargs)
 
+    @method_decorator(login_required)
     def post(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return HttpResponseRedirect(
-                reverse_lazy("core:login", args=self.args, kwargs=kwargs)
-                + "?next="
-                + request.path
-            )
-        self.object = Counter.objects.filter(type="EBOUTIC").first()
+        self.object = get_object_or_404(Counter, type="EBOUTIC")
         self.make_basket(request)
         if "add_product" in request.POST["action"]:
             self.add_product(request)
