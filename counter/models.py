@@ -209,6 +209,14 @@ class Product(models.Model):
     def get_absolute_url(self):
         return reverse("counter:product_list")
 
+    def can_be_sold_to(self, user: User):
+        if not self.buying_groups.exists():
+            return True
+        for group in self.buying_groups.all():
+            if user.is_in_group(group.name):
+                return True
+        return False
+
 
 class Counter(models.Model):
     name = models.CharField(_("name"), max_length=30)
