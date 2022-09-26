@@ -18,6 +18,8 @@
         <script src="{{ static('core/js/jquery-3.1.0.min.js') }}"></script>
         <!-- Put here to always have acces to those functions on django widgets -->
         <script src="{{ static('core/js/script.js') }}"></script>
+        {% block additional_css %}{% endblock %}
+        {% block additional_js %}{% endblock %}
         {% endblock %}
     </head>
 
