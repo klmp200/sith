@@ -46,18 +46,6 @@ from eboutic.models import Basket, Invoice, InvoiceItem
 class EbouticMain(TemplateView):
     template_name = "eboutic/eboutic_main.jinja"
 
-    # def make_basket(self, request):
-    #     if "basket_id" not in request.session.keys():  # Init the basket session entry
-    #         self.basket = Basket(user=request.user)
-    #         self.basket.save()
-    #     else:
-    #         self.basket = Basket.objects.filter(id=request.session["basket_id"]).first()
-    #         if self.basket is None:
-    #             self.basket = Basket(user=request.user)
-    #             self.basket.save()
-    #     request.session["basket_id"] = self.basket.id
-    #     request.session.modified = True
-
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         self.object = get_object_or_404(Counter, type="EBOUTIC")

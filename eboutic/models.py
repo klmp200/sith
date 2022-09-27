@@ -143,10 +143,6 @@ class Invoice(models.Model):
         return "%s - %s - %s" % (self.user, self.get_total(), self.date)
 
     def get_total(self) -> float:
-        # total = 0
-        # for i in self.items.all():
-        #     total += i.quantity * i.product_unit_price
-        # return total
         total = self.items.aggregate(total=Sum(F("quantity") * F("product_unit_price")))["total"]
         return float(total) if total is not None else 0
 
