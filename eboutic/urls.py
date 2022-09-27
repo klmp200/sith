@@ -38,9 +38,12 @@ urlpatterns = [
         EtransactionAutoAnswer.as_view(),
         name="etransation_autoanswer",
     ),
-
     # api views
     path("basket/add-product/<int:product_id>/", api.add_product, name="add_product"),
-    path("basket/remove-product/<int:product_id>/", api.remove_product, name="remove_product"),
-    path("basket/clear/", api.clear_basket, name="clear_basket")
+    path(
+        "basket/remove-product/<int:product_id>/",
+        api.remove_product,
+        name="remove_product",
+    ),
+    path("basket/clear/", api.clear_basket, name="clear_basket"),
 ]

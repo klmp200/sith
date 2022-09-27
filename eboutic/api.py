@@ -60,16 +60,20 @@ def add_product(request: HttpRequest, product_id: int) -> HttpResponse:
     try:
         product = Counter.objects.get(type="EBOUTIC").products.get(id=product_id)
     except Product.DoesNotExist:
-        return HttpResponse(status=404, content_type="application/json", content=json.dumps({}))
+        return HttpResponse(
+            status=404, content_type="application/json", content=json.dumps({})
+        )
     if product.can_be_sold_to(request.user):
         basket.add_product(product)
     basket.save()
     res = {
         "total": basket.get_total(),
-        "items": list(basket.items.all().values("product_id", "quantity"))
+        "items": list(basket.items.all().values("product_id", "quantity")),
     }
     print(res)
-    return HttpResponse(status=200, content_type="application/json", content=json.dumps(res))
+    return HttpResponse(
+        status=200, content_type="application/json", content=json.dumps(res)
+    )
 
 
 @require_POST
@@ -100,13 +104,17 @@ def remove_product(request: HttpRequest, product_id: int) -> HttpResponse:
     try:
         product = Counter.objects.get(type="EBOUTIC").products.get(id=product_id)
     except Product.DoesNotExist:
-        return HttpResponse(status=404, content_type="application/json", content=json.dumps({}))
+        return HttpResponse(
+            status=404, content_type="application/json", content=json.dumps({})
+        )
     basket.del_product(product)
     res = {
         "total": basket.get_total(),
-        "items": list(basket.items.all().values("product_id", "quantity"))
+        "items": list(basket.items.all().values("product_id", "quantity")),
     }
-    return HttpResponse(status=200, content_type="application/json", content=json.dumps(res))
+    return HttpResponse(
+        status=200, content_type="application/json", content=json.dumps(res)
+    )
 
 
 @require_POST
@@ -119,4 +127,3 @@ def clear_basket(request: HttpRequest) -> HttpResponse:
             return HttpResponse("Cleared", status=200)
         except Basket.DoesNotExist:
             return HttpResponse("No basket is currently used", status=404)
-

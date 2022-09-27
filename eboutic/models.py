@@ -97,7 +97,9 @@ class Basket(models.Model):
         ).exists()
 
     def get_total(self) -> float:
-        total = self.items.aggregate(total=Sum(F("quantity") * F("product_unit_price")))["total"]
+        total = self.items.aggregate(
+            total=Sum(F("quantity") * F("product_unit_price"))
+        )["total"]
         return float(total) if total is not None else 0
 
     @classmethod
@@ -142,7 +144,9 @@ class Invoice(models.Model):
         return "%s - %s - %s" % (self.user, self.get_total(), self.date)
 
     def get_total(self) -> float:
-        total = self.items.aggregate(total=Sum(F("quantity") * F("product_unit_price")))["total"]
+        total = self.items.aggregate(
+            total=Sum(F("quantity") * F("product_unit_price"))
+        )["total"]
         return float(total) if total is not None else 0
 
     def validate(self, *args, **kwargs):
