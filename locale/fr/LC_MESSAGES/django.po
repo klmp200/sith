@@ -6192,7 +6192,7 @@ msgstr "Nombre de caractères max: %(max_length)s"
 
 #: eboutic/templates/eboutic/eboutic_main.jinja
 msgid "clear"
-msgstr "effacer"
+msgstr "vider"
 
 #~ msgid "Indifferent"
 #~ msgstr "Indifferent"
