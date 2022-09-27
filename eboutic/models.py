@@ -108,12 +108,11 @@ class Basket(models.Model):
         """
         if "basket_id" in request.session:
             try:
-                return Basket.objects.get(id=request.session["basket_id"])
-            except Basket.DoesNotExist:
+                return cls.objects.get(id=request.session["basket_id"])
+            except cls.DoesNotExist:
                 pass
         # if here, it means there is no basket used in the current session
         # so we must create a new one
-        cls.objects.filter(user=request.user).delete()  # remove previous baskets
         basket = cls(user=request.user)
         basket.save()
         request.session["basket_id"] = basket.id
