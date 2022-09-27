@@ -4090,6 +4090,7 @@ msgid "Enter client code:"
 msgstr "Entrez un code client : "
 
 #: counter/templates/counter/counter_main.jinja:42
+#, eboutic/templates/eboutic/eboutic_main.jinja:54
 msgid "validate"
 msgstr "valider"
 
@@ -6188,6 +6189,10 @@ msgstr "Vous ne pouvez plus écrire de commentaires, la date est passée."
 #, python-format
 msgid "Maximum characters: %(max_length)s"
 msgstr "Nombre de caractères max: %(max_length)s"
+
+#: eboutic/templates/eboutic/eboutic_main.jinja
+msgid "clear"
+msgstr "effacer"
 
 #~ msgid "Indifferent"
 #~ msgstr "Indifferent"

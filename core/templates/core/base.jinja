@@ -9,7 +9,10 @@
         <link rel="stylesheet" href="{{ static('core/jquery.datetimepicker.min.css') }}">
         <link rel="stylesheet" href="{{ static('ajax_select/css/ajax_select.css') }}">
         <link rel="stylesheet" href="{{ scss('core/style.scss') }}">
-        <link rel="stylesheet" href="{{ static('core/js/ui/jquery-ui.min.css') }}">
+        {% block jquery_css %}
+            {# Thile file is quite heavy (around 250kb), so declaring it in a block allows easy removal #}
+            <link rel="stylesheet" href="{{ static('core/js/ui/jquery-ui.min.css') }}">
+        {% endblock %}
         <link rel="preload" as="style" href="{{ static('core/font-awesome/css/font-awesome.min.css') }}" onload="this.onload=null;this.rel='stylesheet'">
         <noscript><link rel="stylesheet" href="{{ static('core/font-awesome/css/font-awesome.min.css') }}"></noscript>
         <script defer href="{{ static('core/font-awesome/js/fontawesone.min.js') }}"></script>

@@ -1,0 +1,135 @@
+#basket {
+    float: right;
+    width: 300px;
+    border: black 1px solid;
+}
+
+@media screen and (max-width: 765px) {
+    #basket {
+        float: unset;
+        display: block;
+        margin: auto;
+    }
+}
+
+.item-list {
+    margin-left: 10px;
+    list-style: none;
+}
+
+.item-list li {
+    display: flex;
+    align-items: center;
+}
+
+.item-row {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.item-name {
+    flex: 1;
+}
+
+.item-price, .item-quantity {
+    width: 65px;
+}
+
+.item-quantity {
+    text-align: center;
+}
+
+.fa-plus, .fa-minus {
+    cursor: pointer;
+}
+
+.item-price {
+    text-align: right;
+    margin-right: 10px;
+}
+
+#catalog {
+    display: flex;
+    flex-direction: column;
+    row-gap: 30px;
+    margin: 20px;
+    max-width: calc(95% - 300px);
+}
+
+.category-header {
+    margin-bottom: 15px;
+}
+
+.product-group {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 15px;
+    row-gap: 15px;
+}
+
+@media screen and (max-width: 765px) {
+    #catalog {
+        max-width: unset;
+    }
+
+    section {
+        text-align: center;
+    }
+
+    .product-group {
+        justify-content: space-around;
+    }
+}
+
+.product-button {
+    position: relative;
+    box-sizing: border-box;
+    min-width: 120px;
+    max-width: 150px;
+    padding: 0;
+    border: #AAAAAA solid 1px;
+    overflow: hidden;
+}
+
+.box-header {
+    padding: 5px 10px;
+    font-size: 13px;
+    min-height: 35px;
+    border-bottom: #AAAAAA solid 1px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.box-header h5, .box-header h3 {
+    margin: 0;
+}
+
+.product-body {
+    --product-img-size: 50px;
+    display: flex;
+    height: var(--product-img-size);
+}
+
+.product-body img {
+    height: 100%;
+    padding: 0;
+    width: var(--product-img-size);
+}
+
+.product-body span {
+    font-size: 13px;
+    flex: 1;
+    align-self: center;
+}
+
+.catalog-buttons {
+    display: flex;
+    justify-content: center;
+    column-gap: 40px;
+    margin: 20px 0;
+}
+
+.catalog-buttons form {
+    margin: 0;
+}

@@ -28,3 +28,4 @@ from eboutic.models import *
 
 admin.site.register(Basket)
 admin.site.register(Invoice)
+admin.site.register(BasketItem)

@@ -1,80 +1,190 @@
 {% extends "core/base.jinja" %}
 
 {% block title %}
-{% trans %}Eboutic{% endtrans %}
+    {% trans %}Eboutic{% endtrans %}
 {% endblock %}
 
-{% macro add_product(id, content, class="") %}
-<form method="post" action="{{ url('eboutic:main') }}" class="inline {{ class }}">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="add_product">
-    <button type="submit" name="product_id" value="{{ id }}"> {{ content|safe }} </button>
-</form>
-{% endmacro %}
+{% block jquery_css %}
+    {#  Remove jquery css  #}
+{% endblock %}
 
-{% macro del_product(id, content) %}
-<form method="post" action="{{ url('eboutic:main') }}" class="inline" style="display:inline">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="del_product">
-    <button type="submit" name="product_id" value="{{ id }}"> {{ content }} </button>
-</form>
-{% endmacro %}
+{% block additional_js %}
+    {# This script contains the code to perform requests to manipulate the
+    user basket without having to reload the page #}
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="{{ static('eboutic/js/eboutic.js') }}"></script>
+{% endblock %}
+
+{% block additional_css %}
+    <link rel="stylesheet" href="{{ static('eboutic/css/eboutic.css') }}">
+{% endblock %}
 
 {% block content %}
-<h3>{% trans %}Eboutic{% endtrans %}</h3>
+    <h1>{% trans %}Eboutic{% endtrans %}</h1>
 
-<div id="basket">
-    <p>{% trans %}Basket: {% endtrans %}</p>
-    <ul>
-        {% for i in basket.items.all()|sort(attribute='id') %}
-        <li>{{ del_product(i.product_id, '-') }} {{ i.quantity }}
-        {{ add_product(i.product_id, '+') }} {{ i.product_name }}: {{ "%0.2f"|format(i.product_unit_price*i.quantity) }} €</li>
-        {% endfor %}
-    </ul>
-    <p>
-        <strong>{% trans %}Basket amount: {% endtrans %}{{ "%0.2f"|format(basket.get_total()) }} €</strong>
+    <div id="eboutic" x-data="basket">
+        <div id="basket">
+            <div class="box-header"><h3>Panier</h3></div>
+            <ul class="item-list">
+                {# Starting money #}
+                <li style="margin-bottom: 20px">
+                    <span class="item-name"><strong>{% trans %}Current account amount: {% endtrans %}</strong></span>
+                    <span class="item-price"><strong>{{ "%0.2f"|format(customer_amount) }} €</strong></span>
+                </li>
+                <template x-for="item in items">
+                    <li class="item-row" x-show="item.quantity > 0">
+                        <span class="item-name" x-text="item.name"></span>
+                        <div class="item-quantity">
+                            <i class="fa fa-minus" @click="remove(item)"></i>
+                            <span x-text="item.quantity"></span>
+                            <i class="fa fa-plus" @click="add(item)"></i>
+                        </div>
+                        <span class="item-price" x-text="(item.unit_price * item.quantity).toFixed(2) + ' €'"></span>
+                    </li>
+                </template>
+                {# Total price #}
+                <li style="margin-top: 20px">
+                    <span class="item-name"><strong>{% trans %}Basket amount: {% endtrans %}</strong></span>
+                    <span x-text="total.toFixed(2) + ' €'" class="item-price"></span>
+                </li>
+            </ul>
+            <div class="catalog-buttons">
+                <button @click="clear_basket()">{% trans %}clear{% endtrans %}</button>
+                <form method="post" action="{{ url('eboutic:command') }}">
+                    {% csrf_token %}
+                    <input type="submit" value="{% trans %}validate{% endtrans %}"/>
+                </form>
+            </div>
+        </div>
+        <div id="catalog">
+            {% for category in categories %}
+                {% if eboutic.products.filter(product_type=category).exists() %}
+                    <section>
+                        {# I would have wholeheartedly directly used the header element instead
+                    but it has already been made messy in core/style.scss #}
+                        <div class="category-header">
+                            <h3>{{ category }}</h3>
+                            {% if category.comment %}
+                                <p>{{ category.comment }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="product-group">
+                            {% for p in eboutic.products.filter(product_type=category).all() %}
+                                <button class="product-button"
+                                        @click="add_from_catalog({{ p.id }}, '{{ p.name }}', {{ p.selling_price }})">
+                                    <div class="box-header">
+                                        <h5>{{ p.name }}</h5>
+                                    </div>
+                                    <div class="product-body">
+                                        {% if p.icon %}
+                                            <img src="{{ p.icon.url }}" alt="image de {{ p.product_name }}">
+                                        {% else %}
+                                            <img src="{{ static('core/img/na.gif') }}"
+                                                 alt="image de {{ p.product_name }}">
+                                        {% endif %}
+                                        <span>{{ p.selling_price }} €</span>
+                                    </div>
+                                </button>
+                            {% endfor %}
+                        </div>
+                    </section>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
 
-        {% if customer_amount != None %}
-            <br>
-            {% trans %}Current account amount: {% endtrans %}<strong>{{ "%0.2f"|format(customer_amount) }} €</strong>
+    <script>
+        {# Quite frankly, I would have prefered to put this part in the `eboutic.js` file
+          but it uses some variables that are created during the rendering of the template.
+          Therefore it is easier and more straightfoward to leave this here #}
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('basket', () => ({
+                items: [{% for item in basket.items.all() %}{
+                        id: {{ item.product_id }},
+                        name: "{{ item.product_name }}",
+                        quantity: {{ item.quantity }},
+                        unit_price: {{ item.product_unit_price }}
+                        },{% endfor %}],
+                total: {{ basket.get_total() }},
 
-            {% if not basket.contains_refilling_item %}
-            <br>
-            {% trans %}Remaining account amount: {% endtrans %}<strong>{{ "%0.2f"|format(customer_amount - basket.get_total()) }} €</strong>
-            {% endif %}
-        {% endif %}
-    </p>
 
-    <form method="post" action="{{ url('eboutic:command') }}">
-        {% csrf_token %}
-        <p>
-        <input type="submit" value="{% trans %}Proceed to command{% endtrans %}" />
-        </p>
-    </form>
-</div>
-<div>
-    {% for t in categories %}
-    {% if eboutic.products.filter(product_type=t).exists() %}
-        <h5>{{ t }}</h5>
-        {% if t.comment %}
-        <p>{{ t.comment }}</p>
-        {% endif %}
-        <br />
-        {% for p in eboutic.products.filter(product_type=t).all() %}
-            {% set file = None %}
-            {% if p.icon %}
-                {% set file = p.icon.url %}
-            {% else %}
-                {% set file = static('core/img/na.gif') %}
-            {% endif %}
-            {% set prod = '<strong>%s</strong><hr><img src="%s" /><span>%s €</span>' % (p.name, file, p.selling_price) %}
-        {{ add_product(p.id, prod, "form_button") }}
-        {% endfor %}
-    {% endif %}
-    {% endfor %}
-</div>
+                add(item) {
+                    item.quantity++;
+                    this.total += item.unit_price;
+                    fetch_add(item.id)
+                        .then(json => this.reload_page_if_diff(json));
+                },
 
+
+                remove(item) {
+                    item.quantity--;
+                    this.total -= item.unit_price;
+                    fetch_remove(item.id)
+                        .then(json => this.reload_page_if_diff(json))
+                },
+
+
+                reload_page_if_diff(json) {
+                    // Reload if json is not well formatted
+                    if (isNaN(parseFloat(json["total"]))) {
+                        window.location.reload();
+                    }
+                    if (Math.abs(json["total"] - this.total) > 0.001) {
+                        // Numbers aren't directly compared because of floating point precision
+                        window.location.reload();
+                    }
+
+                    if (json["items"] === undefined) {
+                        window.location.reload();
+                    }
+                    for (const item of json["items"]) {
+                        if (isNaN(parseInt(item["product_id"])) || isNaN(parseInt(item["quantity"]))) {
+                            window.location.reload();
+                        }
+                        const local_item = this.items.find(i => i.id === item["product_id"])
+                        if (local_item === undefined || local_item.quantity !== item["quantity"]) {
+                            window.location.reload();
+                        }
+                    }
+                },
+
+
+                create_item(id, name, price) {
+                    let new_item = {
+                        id: id,
+                        name: name,
+                        quantity: 0,
+                        unit_price: price
+                    };
+                    this.items.push(new_item);
+                    this.add(new_item);
+                },
+
+
+                add_from_catalog(id, name, price) {
+                    for (let item of this.items) {
+                        if (item.id === id) {
+                            this.add(item);
+                            return;
+                        }
+                    }
+                    this.create_item(id, name, price);
+                },
+
+
+                clear_basket() {
+                    fetch("{{ url('eboutic:clear_basket') }}", {
+                        method: "POST",
+                        headers: {'X-CSRFToken': csrftoken},
+                        mode: 'same-origin'
+                    }).then(res => {
+                        if (res.ok) {
+                            this.items = []
+                            this.total = 0
+                        }
+                    })
+                }
+            }))
+        })
+    </script>
 {% endblock %}
-
-
-
