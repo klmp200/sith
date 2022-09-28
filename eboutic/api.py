@@ -70,7 +70,6 @@ def add_product(request: HttpRequest, product_id: int) -> HttpResponse:
         "total": basket.get_total(),
         "items": list(basket.items.all().values("product_id", "quantity")),
     }
-    print(res)
     return HttpResponse(
         status=200, content_type="application/json", content=json.dumps(res)
     )
