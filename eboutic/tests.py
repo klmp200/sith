@@ -69,6 +69,20 @@ class EbouticTest(TestCase):
         response = self.client.get(url)
         return response
 
+    def get_busy_basket(self):
+        """
+        Return a basket with 3 barbar and 1 cotis in it.
+        Edit the client session to store the basket id in it
+        """
+        basket = Basket.objects.create(user=self.subscriber)
+        session = self.client.session
+        session["basket_id"] = basket.id
+        session.save()
+
+        basket.add_product(self.barbar, 3)
+        basket.add_product(self.cotis)
+        return basket
+
 
 class EbouticApiTest(EbouticTest):
     """
@@ -80,13 +94,13 @@ class EbouticApiTest(EbouticTest):
         self.assertFalse(Basket.objects.filter(user=self.subscriber).exists())
 
         kwargs = {"product_id": self.barbar.id}
-        barbar_json = json.dumps({
-            "total": float(self.barbar.selling_price),
-            "items": [
-                {"product_id": self.barbar.id, "quantity": 1}
-            ]
-        })
-        res = self.client.post(reverse('eboutic:add_product', kwargs=kwargs))
+        barbar_json = json.dumps(
+            {
+                "total": float(self.barbar.selling_price),
+                "items": [{"product_id": self.barbar.id, "quantity": 1}],
+            }
+        )
+        res = self.client.post(reverse("eboutic:add_product", kwargs=kwargs))
         baskets = Basket.objects.filter(user=self.subscriber)
 
         # test that the basket has been created with the right items
@@ -94,6 +108,7 @@ class EbouticApiTest(EbouticTest):
         basket = baskets.first()
         self.assertEqual(basket.id, self.client.session["basket_id"])
         self.assertEqual(basket.items.count(), 1)
+        self.assertEqual(basket.items.first().quantity, 1)
         self.assertEqual(basket.items.first().product_id, self.barbar.id)
 
         self.assertEqual(res.status_code, 200)
@@ -101,254 +116,97 @@ class EbouticApiTest(EbouticTest):
 
     def test_add_product_with_sith_account_existing_basket(self):
         self.client.login(username="subscriber", password="plop")
-        basket = Basket.objects.create(user=self.subscriber)
-        self.client.session["product_id"] = basket.id
-        expected_session_product_id = self.client.session["product_id"]
-        basket.add_product(self.barbar, 3)
-        basket.add_product(self.cotis)
+        # the initial basket contains 1 cotis and 3 barbar
+        basket = self.get_busy_basket()
+        expected_session_basket_id = self.client.session["basket_id"]
         nb_baskets = Basket.objects.filter(user=self.subscriber).count()
 
-        kwargs = {"product_id": self.barbar.id}
         total_price = self.barbar.selling_price * 4 + self.cotis.selling_price
-        expected_json = json.dumps({
-            "total": float(total_price),
-            "items": [
-                {"product_id": self.barbar.id, "quantity": 4},
-                {"product_id": self.cotis.id, "quantity": 1}
-            ]
-        })
-        res = self.client.post(reverse('eboutic:add_product', kwargs=kwargs))
+        expected_json = json.dumps(
+            {
+                "total": float(total_price),
+                "items": [
+                    {"product_id": self.barbar.id, "quantity": 4},
+                    {"product_id": self.cotis.id, "quantity": 1},
+                ],
+            }
+        )
+        kwargs = {"product_id": self.barbar.id}
+        res = self.client.post(reverse("eboutic:add_product", kwargs=kwargs))
 
         new_nb_baskets = Basket.objects.filter(user=self.subscriber).count()
-        self.assertEqual(new_nb_baskets, nb_baskets)
-        self.assertEqual(self.client.session["basket_id"], expected_session_product_id)
-        self.assertEqual(basket.items.count(), 5)
-        self.assertEqual(basket.items.filter(product_id=self.barbar.id).count(), 4)
-        self.assertEqual(basket.items.filter(product_id=self.cotis.id).count(), 1)
+        self.assertEqual(
+            new_nb_baskets,
+            nb_baskets,
+            msg="No new basket should be created if one is indicated in the session",
+        )
+        self.assertEqual(
+            self.client.session["basket_id"],
+            expected_session_basket_id,
+            msg="The basket id in the session should not change",
+        )
+        self.assertEqual(basket.items.count(), 2)
+        self.assertEqual(basket.items.get(product_id=self.barbar.id).quantity, 4)
+        self.assertEqual(basket.items.get(product_id=self.cotis.id).quantity, 1)
 
         self.assertEqual(res.status_code, 200)
         self.assertJSONEqual(expected_json, res.json())
 
-# def test_buy_simple_product_with_sith_account(self):
-#     self.client.login(username="subscriber", password="plop")
-#     Refilling(
-#         amount=10,
-#         counter=self.eboutic,
-#         operator=self.skia,
-#         customer=self.subscriber.customer,
-#     ).save()
-#     response = self.client.post(
-#         reverse("eboutic:main"),
-#         {"action": "add_product", "product_id": self.barbar.id},
-#     )
-#     self.assertTrue(
-#         '<input type="hidden" name="action" value="add_product">\\n'
-#         '    <button type="submit" name="product_id" value="4"> + </button>\\n'
-#         "</form>\\n Barbar: 1.70 \\xe2\\x82\\xac</li>" in str(response.content)
-#     )
-#     response = self.client.post(reverse("eboutic:command"))
-#     self.assertTrue(
-#         "<tr>\\n                <td>Barbar</td>\\n                <td>1</td>\\n"
-#         "                <td>1.70 \\xe2\\x82\\xac</td>\\n            </tr>"
-#         in str(response.content)
-#     )
-#     response = self.client.post(
-#         reverse("eboutic:pay_with_sith"), {"action": "pay_with_sith_account"}
-#     )
-#     self.assertTrue(
-#         "Le paiement a \\xc3\\xa9t\\xc3\\xa9 effectu\\xc3\\xa9\\n"
-#         in str(response.content)
-#     )
-#     response = self.client.get(
-#         reverse(
-#             "core:user_account_detail",
-#             kwargs={
-#                 "user_id": self.subscriber.id,
-#                 "year": datetime.now().year,
-#                 "month": datetime.now().month,
-#             },
-#         )
-#     )
-#     self.assertTrue(
-#         'class="selected_tab">Compte (8.30 \\xe2\\x82\\xac)</a>'
-#         in str(response.content)
-#     )
-#     self.assertTrue(
-#         '<td>Eboutic</td>\\n        <td><a href="/user/3/">Subscribed User</a></td>\\n'
-#         "        <td>Barbar</td>\\n        <td>1</td>\\n        <td>1.70 \\xe2\\x82\\xac</td>\\n"
-#         "        <td>Compte utilisateur</td>" in str(response.content)
-#     )
-#
-# def test_buy_simple_product_with_credit_card(self):
-#     self.client.login(username="subscriber", password="plop")
-#     response = self.client.post(
-#         reverse("eboutic:main"),
-#         {"action": "add_product", "product_id": self.barbar.id},
-#     )
-#     self.assertTrue(
-#         '<input type="hidden" name="action" value="add_product">\\n'
-#         '    <button type="submit" name="product_id" value="4"> + </button>\\n'
-#         "</form>\\n Barbar: 1.70 \\xe2\\x82\\xac</li>" in str(response.content)
-#     )
-#     response = self.client.post(reverse("eboutic:command"))
-#     self.assertTrue(
-#         "<tr>\\n                <td>Barbar</td>\\n                <td>1</td>\\n"
-#         "                <td>1.70 \\xe2\\x82\\xac</td>\\n            </tr>"
-#         in str(response.content)
-#     )
-#
-#     response = self.generate_bank_valid_answer_from_page_content(response.content)
-#     self.assertTrue(response.status_code == 200)
-#     self.assertTrue(response.content.decode("utf-8") == "")
-#
-#     response = self.client.get(
-#         reverse(
-#             "core:user_account_detail",
-#             kwargs={
-#                 "user_id": self.subscriber.id,
-#                 "year": datetime.now().year,
-#                 "month": datetime.now().month,
-#             },
-#         )
-#     )
-#     self.assertTrue(
-#         'class="selected_tab">Compte (0.00 \\xe2\\x82\\xac)</a>'
-#         in str(response.content)
-#     )
-#     self.assertTrue(
-#         '<td>Eboutic</td>\\n        <td><a href="/user/3/">Subscribed User</a></td>\\n'
-#         "        <td>Barbar</td>\\n        <td>1</td>\\n        <td>1.70 \\xe2\\x82\\xac</td>\\n"
-#         "        <td>Carte bancaire</td>" in str(response.content)
-#     )
-#
-# def test_alter_basket_with_credit_card(self):
-#     self.client.login(username="subscriber", password="plop")
-#     response = self.client.post(
-#         reverse("eboutic:main"),
-#         {"action": "add_product", "product_id": self.barbar.id},
-#     )
-#     self.assertTrue(
-#         '<input type="hidden" name="action" value="add_product">\\n'
-#         '    <button type="submit" name="product_id" value="4"> + </button>\\n'
-#         "</form>\\n Barbar: 1.70 \\xe2\\x82\\xac</li>" in str(response.content)
-#     )
-#     response = self.client.post(reverse("eboutic:command"))
-#     self.assertTrue(
-#         "<tr>\\n                <td>Barbar</td>\\n                <td>1</td>\\n"
-#         "                <td>1.70 \\xe2\\x82\\xac</td>\\n            </tr>"
-#         in str(response.content)
-#     )
-#
-#     response_altered = self.client.post(
-#         reverse("eboutic:main"),
-#         {"action": "add_product", "product_id": self.barbar.id},
-#     )
-#     self.assertTrue(
-#         '<input type="hidden" name="action" value="add_product">\\n'
-#         '    <button type="submit" name="product_id" value="4"> + </button>\\n'
-#         "</form>\\n Barbar: 3.40 \\xe2\\x82\\xac</li>"
-#         in str(response_altered.content)
-#     )
-#
-#     response = self.generate_bank_valid_answer_from_page_content(response.content)
-#     self.assertEqual(response.status_code, 500)
-#     self.assertIn(
-#         "Basket processing failed with error: SuspiciousOperation('Basket total and amount do not match'",
-#         response.content.decode("utf-8"),
-#     )
-#
-# def test_buy_refill_product_with_credit_card(self):
-#     self.client.login(username="subscriber", password="plop")
-#     response = self.client.post(
-#         reverse("eboutic:main"),
-#         {"action": "add_product", "product_id": self.refill.id},
-#     )
-#     self.assertTrue(
-#         '<input type="hidden" name="action" value="add_product">\\n'
-#         '    <button type="submit" name="product_id" value="3"> + </button>\\n'
-#         "</form>\\n Rechargement 15 \\xe2\\x82\\xac: 15.00 \\xe2\\x82\\xac</li>"
-#         in str(response.content)
-#     )
-#     response = self.client.post(reverse("eboutic:command"))
-#     self.assertTrue(
-#         "<tr>\\n                <td>Rechargement 15 \\xe2\\x82\\xac</td>\\n                <td>1</td>\\n"
-#         "                <td>15.00 \\xe2\\x82\\xac</td>\\n            </tr>"
-#         in str(response.content)
-#     )
-#
-#     response = self.generate_bank_valid_answer_from_page_content(response.content)
-#     self.assertTrue(response.status_code == 200)
-#     self.assertTrue(response.content.decode("utf-8") == "")
-#
-#     response = self.client.get(
-#         reverse(
-#             "core:user_account_detail",
-#             kwargs={
-#                 "user_id": self.subscriber.id,
-#                 "year": datetime.now().year,
-#                 "month": datetime.now().month,
-#             },
-#         )
-#     )
-#     self.assertTrue(
-#         'class="selected_tab">Compte (15.00 \\xe2\\x82\\xac)</a>'
-#         in str(response.content)
-#     )
-#     self.assertTrue(
-#         "<td>\\n            <ul>\\n                \\n                "
-#         "<li>1 x Rechargement 15 \\xe2\\x82\\xac - 15.00 \\xe2\\x82\\xac</li>\\n"
-#         "                \\n            </ul>\\n        </td>\\n"
-#         "        <td>15.00 \\xe2\\x82\\xac</td>" in str(response.content)
-#     )
-#
-# def test_buy_subscribe_product_with_credit_card(self):
-#     self.client.login(username="old_subscriber", password="plop")
-#     response = self.client.get(
-#         reverse("core:user_profile", kwargs={"user_id": self.old_subscriber.id})
-#     )
-#     self.assertTrue("Non cotisant" in str(response.content))
-#     response = self.client.post(
-#         reverse("eboutic:main"),
-#         {"action": "add_product", "product_id": self.cotis.id},
-#     )
-#     self.assertTrue(
-#         '<input type="hidden" name="action" value="add_product">\\n'
-#         '    <button type="submit" name="product_id" value="1"> + </button>\\n'
-#         "</form>\\n Cotis 1 semestre: 15.00 \\xe2\\x82\\xac</li>"
-#         in str(response.content)
-#     )
-#     response = self.client.post(reverse("eboutic:command"))
-#     self.assertTrue(
-#         "<tr>\\n                <td>Cotis 1 semestre</td>\\n                <td>1</td>\\n"
-#         "                <td>15.00 \\xe2\\x82\\xac</td>\\n            </tr>"
-#         in str(response.content)
-#     )
-#
-#     response = self.generate_bank_valid_answer_from_page_content(response.content)
-#     self.assertTrue(response.status_code == 200)
-#     self.assertTrue(response.content.decode("utf-8") == "")
-#
-#     response = self.client.get(
-#         reverse(
-#             "core:user_account_detail",
-#             kwargs={
-#                 "user_id": self.old_subscriber.id,
-#                 "year": datetime.now().year,
-#                 "month": datetime.now().month,
-#             },
-#         )
-#     )
-#     self.assertTrue(
-#         'class="selected_tab">Compte (0.00 \\xe2\\x82\\xac)</a>'
-#         in str(response.content)
-#     )
-#     self.assertTrue(
-#         "<td>\\n            <ul>\\n                \\n                "
-#         "<li>1 x Cotis 1 semestre - 15.00 \\xe2\\x82\\xac</li>\\n"
-#         "                \\n            </ul>\\n        </td>\\n"
-#         "        <td>15.00 \\xe2\\x82\\xac</td>" in str(response.content)
-#     )
-#     response = self.client.get(
-#         reverse("core:user_profile", kwargs={"user_id": self.old_subscriber.id})
-#     )
-#     self.assertTrue("Cotisant jusqu\\'au" in str(response.content))
+    def test_add_invalid_product(self):
+        self.client.login(username="subscriber", password="plop")
+        basket = Basket.objects.create(user=self.subscriber)
+
+        max_product_id = Product.objects.order_by("-id")[0].id
+        kwargs = {"product_id": max_product_id + 1}
+        res = self.client.post(reverse("eboutic:add_product", kwargs=kwargs))
+
+        self.assertEqual(
+            res.status_code,
+            404,
+            msg="Adding not existing product should result in a 404 response",
+        )
+        self.assertJSONEqual(json.dumps({}), res.json())
+        self.assertEqual(
+            basket.items.count(),
+            0,
+            msg="If the request is invalid, add nothing in the basket",
+        )
+
+    def test_remove_product(self):
+        self.client.login(username="subscriber", password="plop")
+        # the initial basket contains 1 cotis and 3 barbar
+        basket = self.get_busy_basket()
+
+        expected_session_basket_id = self.client.session["basket_id"]
+        nb_baskets = Basket.objects.filter(user=self.subscriber).count()
+
+        total_price = self.barbar.selling_price * 2 + self.cotis.selling_price
+        expected_json = json.dumps(
+            {
+                "total": float(total_price),
+                "items": [
+                    {"product_id": self.barbar.id, "quantity": 2},
+                    {"product_id": self.cotis.id, "quantity": 1},
+                ],
+            }
+        )
+        kwargs = {"product_id": self.barbar.id}
+        res = self.client.post(reverse("eboutic:remove_product", kwargs=kwargs))
+
+        new_nb_baskets = Basket.objects.filter(user=self.subscriber).count()
+        self.assertEqual(
+            new_nb_baskets,
+            nb_baskets,
+            msg="No new basket should be created if one is indicated in the session",
+        )
+        self.assertEqual(
+            self.client.session["basket_id"],
+            expected_session_basket_id,
+            msg="The basket id in the session should not change",
+        )
+        self.assertEqual(basket.items.count(), 2)
+        self.assertEqual(basket.items.get(product_id=self.barbar.id).quantity, 2)
+        self.assertEqual(basket.items.get(product_id=self.cotis.id).quantity, 1)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertJSONEqual(expected_json, res.json())

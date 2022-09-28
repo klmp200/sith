@@ -65,6 +65,10 @@ def add_product(request: HttpRequest, product_id: int) -> HttpResponse:
         )
     if product.can_be_sold_to(request.user):
         basket.add_product(product)
+    else:
+        return HttpResponse(
+            status=403, content_type="application/json", content=json.dumps({})
+        )
     basket.save()
     res = {
         "total": basket.get_total(),
@@ -119,6 +123,10 @@ def remove_product(request: HttpRequest, product_id: int) -> HttpResponse:
 @require_POST
 @login_required
 def clear_basket(request: HttpRequest) -> HttpResponse:
+    """
+    Remove all items from the basket referenced in the session of the
+    user who makes this request.
+    """
     if "basket_id" in request.session:
         try:
             basket = Basket.objects.get(id=request.session["basket_id"])
