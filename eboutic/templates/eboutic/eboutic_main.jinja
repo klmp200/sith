@@ -115,7 +115,6 @@
                         .then(json => this.reload_page_if_diff(json));
                 },
 
-
                 remove(item) {
                     item.quantity--;
                     this.total -= item.unit_price;
@@ -123,7 +122,14 @@
                         .then(json => this.reload_page_if_diff(json))
                 },
 
-
+                /**
+                 * Given a json response previously returned by the server,
+                 * check if this response is well formated and if the basket
+                 * as it exists server-side is the same as the basket client-side.
+                 *
+                 * If the two baskets do not correspond, reload the page.
+                 * @param json : JSON
+                 */
                 reload_page_if_diff(json) {
                     // Reload if json is not well formatted
                     if (isNaN(parseFloat(json["total"]))) {
@@ -148,7 +154,12 @@
                     }
                 },
 
-
+                /**
+                 * Create an item in the basket if it was not already in
+                 * @param id : int the id of the product to add
+                 * @param name : String the name of the product
+                 * @param price : number the unit price of the product
+                 */
                 create_item(id, name, price) {
                     let new_item = {
                         id: id,
@@ -160,7 +171,14 @@
                     this.add(new_item);
                 },
 
-
+                /**
+                 * add an item to the basket.
+                 * This is called when the user click
+                 * on a button in the catalog (left side of the page)
+                 * @param id : int the id of the product to add
+                 * @param name : String the name of the product
+                 * @param price : number the unit price of the product
+                 */
                 add_from_catalog(id, name, price) {
                     for (let item of this.items) {
                         if (item.id === id) {
@@ -171,7 +189,9 @@
                     this.create_item(id, name, price);
                 },
 
-
+                /**
+                 * Clear the user's basket without reloading the page
+                 */
                 clear_basket() {
                     fetch("{{ url('eboutic:clear_basket') }}", {
                         method: "POST",
