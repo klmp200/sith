@@ -60,14 +60,18 @@ def add_product(request: HttpRequest, product_id: int) -> HttpResponse:
     try:
         product = Counter.objects.get(type="EBOUTIC").products.get(id=product_id)
     except Product.DoesNotExist:
+        content = json.dumps({"error_msg": "This product does not exist"})
         return HttpResponse(
-            status=404, content_type="application/json", content=json.dumps({})
+            status=404, content_type="application/json", content=content
         )
     if product.can_be_sold_to(request.user):
         basket.add_product(product)
     else:
+        content = json.dumps(
+            {"error_msg": "You do not have have rights to add this product"}
+        )
         return HttpResponse(
-            status=403, content_type="application/json", content=json.dumps({})
+            status=403, content_type="application/json", content=content
         )
     basket.save()
     res = {
@@ -107,8 +111,9 @@ def remove_product(request: HttpRequest, product_id: int) -> HttpResponse:
     try:
         product = Counter.objects.get(type="EBOUTIC").products.get(id=product_id)
     except Product.DoesNotExist:
+        content = json.dumps({"error_msg": "This product does not exist"})
         return HttpResponse(
-            status=404, content_type="application/json", content=json.dumps({})
+            status=404, content_type="application/json", content=content
         )
     basket.del_product(product)
     res = {
