@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*
 #
 # Copyright 2022
-# - Maréchal
+# - Maréchal <thgirod@outlook.com>
 #
 # Ce fichier fait partie du site de l'Association des Étudiants de l'UTBM,
 # http://ae.utbm.fr.
