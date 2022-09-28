@@ -180,13 +180,13 @@
                  * @param price : number the unit price of the product
                  */
                 add_from_catalog(id, name, price) {
-                    for (let item of this.items) {
-                        if (item.id === id) {
-                            this.add(item);
-                            return;
-                        }
+                    const item = this.items.find(e => e.id === id)
+                    if (item === undefined) {
+                        this.create_item(id, name, price);
+                    } else {
+                        // the user clicked on an item which is already in the basket
+                        this.add(item);
                     }
-                    this.create_item(id, name, price);
                 },
 
                 /**
