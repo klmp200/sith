@@ -65,13 +65,9 @@ class EbouticMain(TemplateView):
     def add_product(self, request: HttpRequest):
         """Add a product to the basket"""
         try:
-            p = self.object.products.filter(id=int(request.POST["product_id"])).first()
-            if not p.buying_groups.exists():
+            p = self.object.products.get(id=int(request.POST["product_id"]))
+            if p.can_be_sold_to(request.user):
                 self.basket.add_product(p)
-            for g in p.buying_groups.all():
-                if request.user.is_in_group(g.name):
-                    self.basket.add_product(p)
-                    break
         except Product.DoesNotExist:
             pass
 
