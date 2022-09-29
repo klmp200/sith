@@ -139,3 +139,6 @@ def clear_basket(request: HttpRequest) -> HttpResponse:
             return HttpResponse("Cleared", status=200)
         except Basket.DoesNotExist:
             return HttpResponse("No basket is currently used", status=404)
+    else:
+        return HttpResponse("No basket is currently used", status=404)
+
