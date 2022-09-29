@@ -154,6 +154,9 @@
                  */
                 reload_page_if_diff(json) {
                     // Reload if json is not well formatted
+                    if (json === undefined || json == null) {
+                        window.location.reload();
+                    }
                     if (isNaN(parseFloat(json["total"]))) {
                         window.location.reload();
                     }
