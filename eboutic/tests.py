@@ -25,6 +25,7 @@ import base64
 import json
 import re
 import urllib
+from datetime import datetime
 
 from OpenSSL import crypto
 from django.conf import settings
@@ -70,44 +71,39 @@ class EbouticTest(TestCase):
         response = self.client.get(url)
         return response
 
-    def get_empty_basket(self):
-        basket = Basket.objects.create(user=self.subscriber)
+    def get_empty_basket(self, user):
         session = self.client.session
+        basket = Basket.objects.create(user=user)
         session["basket_id"] = basket.id
         session.save()
         return basket
 
-    def get_busy_basket(self):
+    def get_busy_basket(self, user):
         """
         Create and return a basket with 3 barbar and 1 cotis in it.
         Edit the client session to store the basket id in it
         """
-        basket = self.get_empty_basket()
+        basket = self.get_empty_basket(user)
         basket.add_product(self.barbar, 3)
         basket.add_product(self.cotis)
         return basket
 
-    def get_simple_basket(self):
+    def get_simple_basket(self, user):
         """
         Create and return a basket with 1 barbar in it.
         Edit the client session to store the basket id in it
         """
-        basket = self.get_empty_basket()
+        basket = self.get_empty_basket(user)
         basket.add_product(self.barbar)
         return basket
 
-    def get_refill_basket(self):
+    def get_refill_basket(self, user):
         """
         Create and return a basket with 1 refill worth 15€ in it
         Edit the client session to store the basket id in it
         """
-        basket = self.get_empty_basket()
+        basket = self.get_empty_basket(user)
         basket.add_product(self.refill)
-        return basket
-
-    def get_cotis_basket(self):
-        basket = self.get_empty_basket()
-        basket.add_product(self.cotis)
         return basket
 
 
@@ -158,7 +154,7 @@ class EbouticApiTest(EbouticTest):
     def test_add_product_with_sith_account_existing_basket(self):
         self.client.login(username="subscriber", password="plop")
         # the initial basket contains 1 cotis and 3 barbar
-        basket = self.get_busy_basket()
+        basket = self.get_busy_basket(self.subscriber)
         expected_session_basket_id = self.client.session["basket_id"]
         nb_baskets = Basket.objects.filter(user=self.subscriber).count()
 
@@ -215,7 +211,7 @@ class EbouticApiTest(EbouticTest):
     def test_remove_product(self):
         self.client.login(username="subscriber", password="plop")
         # the initial basket contains 1 cotis and 3 barbar
-        basket = self.get_busy_basket()
+        basket = self.get_busy_basket(self.subscriber)
 
         expected_session_basket_id = self.client.session["basket_id"]
         nb_baskets = Basket.objects.filter(user=self.subscriber).count()
@@ -253,7 +249,7 @@ class EbouticApiTest(EbouticTest):
 
     def test_clear_basket(self):
         self.client.login(username="subscriber", password="plop")
-        basket = self.get_busy_basket()
+        basket = self.get_busy_basket(self.subscriber)
 
         nb_baskets = Basket.objects.filter(user=self.subscriber).count()
 
@@ -281,7 +277,7 @@ class EbouticViewTest(EbouticTest):
         self.client.login(username="subscriber", password="plop")
         self.subscriber.customer.amount = 100  # give money before test
         self.subscriber.customer.save()
-        self.get_busy_basket()
+        self.get_busy_basket(self.subscriber)
         response = self.client.post(reverse("eboutic:command"))
         res_content = "".join(str(response.content).split())
         self.assertTrue(
@@ -299,7 +295,7 @@ class EbouticViewTest(EbouticTest):
         self.client.login(username="subscriber", password="plop")
         self.subscriber.customer.amount = 100  # give money before test
         self.subscriber.customer.save()
-        basket = self.get_busy_basket()
+        basket = self.get_busy_basket(self.subscriber)
         amount = basket.get_total()
         response = self.client.post(
             reverse("eboutic:pay_with_sith"), {"action": "pay_with_sith_account"}
@@ -313,7 +309,7 @@ class EbouticViewTest(EbouticTest):
 
     def test_buy_with_sith_account_no_money(self):
         self.client.login(username="subscriber", password="plop")
-        basket = self.get_busy_basket()
+        basket = self.get_busy_basket(self.subscriber)
         initial_money = basket.get_total() - 1
         self.subscriber.customer.amount = initial_money
         self.subscriber.customer.save()
@@ -328,7 +324,7 @@ class EbouticViewTest(EbouticTest):
 
     def test_buy_simple_product_with_credit_card(self):
         self.client.login(username="subscriber", password="plop")
-        self.get_simple_basket()
+        self.get_simple_basket(self.subscriber)
         response = self.client.post(reverse("eboutic:command"))
         response = self.generate_bank_valid_answer_from_page_content(response.content)
         self.assertTrue(response.status_code == 200)
@@ -347,7 +343,7 @@ class EbouticViewTest(EbouticTest):
 
     def test_alter_basket_with_credit_card(self):
         self.client.login(username="subscriber", password="plop")
-        self.get_simple_basket()
+        self.get_simple_basket(self.subscriber)
         response = self.client.post(reverse("eboutic:command"))
         self.client.post(  # alter response
             reverse("eboutic:main"),
@@ -362,7 +358,7 @@ class EbouticViewTest(EbouticTest):
 
     def test_buy_refill_product_with_credit_card(self):
         self.client.login(username="subscriber", password="plop")
-        self.get_refill_basket()
+        self.get_empty_basket(self.subscriber).add_product(self.refill)
         # basket contains 1 refill item worth 15€
         initial_balance = self.subscriber.customer.amount
         response = self.client.post(reverse("eboutic:command"))
@@ -375,23 +371,22 @@ class EbouticViewTest(EbouticTest):
 
     def test_buy_subscribe_product_with_credit_card(self):
         self.client.login(username="old_subscriber", password="plop")
-        self.old_subscriber.subscriptions.all().delete()
         response = self.client.get(
             reverse("core:user_profile", kwargs={"user_id": self.old_subscriber.id})
         )
         self.assertTrue("Non cotisant" in str(response.content))
-        self.get_cotis_basket()
+        basket = self.get_empty_basket(self.old_subscriber)
+        basket.add_product(self.cotis)
         response = self.client.post(reverse("eboutic:command"))
         response = self.generate_bank_valid_answer_from_page_content(response.content)
         self.assertTrue(response.status_code == 200)
+        self.assertTrue(response.content.decode("utf-8") == "")
 
         # reload the member
         subscriber = User.objects.get(id=self.old_subscriber.id)
-
-        self.assertTrue(subscriber.is_subscribed, msg="User should be subscribed now")
-        self.assertEqual(subscriber.subscriptions.count(), 1)
-        sub = subscriber.subscriptions.first()
-        self.assertEqual(sub.payment_method, "CARD")
+        self.assertEqual(subscriber.subscriptions.count(), 2)
+        sub = subscriber.subscriptions.order_by("-subscription_end").first()
+        self.assertTrue(sub.is_valid_now())
         self.assertEqual(sub.member, subscriber)
         self.assertEqual(sub.subscription_type, "un-semestre")
         self.assertEqual(sub.location, "EBOUTIC")
