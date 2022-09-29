@@ -64,12 +64,11 @@ class EbouticMain(TemplateView):
 
     def add_product(self, request: HttpRequest):
         """Add a product to the basket"""
-        try:
-            p = self.object.products.get(id=int(request.POST["product_id"]))
+        p = self.object.products \
+            .filter(id=int(request.POST["product_id"])).first()
+        if p is not None:
             if p.can_be_sold_to(request.user):
                 self.basket.add_product(p)
-        except Product.DoesNotExist:
-            pass
 
     def del_product(self, request):
         """Delete a product from the basket"""
