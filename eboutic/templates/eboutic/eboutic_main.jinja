@@ -107,19 +107,41 @@
                         },{% endfor %}],
                 total: {{ basket.get_total() }},
 
+                /* This variable will store the id the last request that was sent to the server.
+                * This is to make sure that when the user send multiple requests in a short span
+                * of time, only the last response of the server shall be compared to the state
+                * of the client-side basket, thus avoiding untimely page reloads
+                *  */
+                last_request_id: 0,
 
                 add(item) {
                     item.quantity++;
                     this.total += item.unit_price;
+                    // increase the id.
+                    // if local_req_id !== this.last_request_id when executing
+                    // the callback, it means that another request has been sent afterwards
+                    this.last_request_id += 1;
+                    const local_req_id = this.last_request_id
                     fetch_add(item.id)
-                        .then(json => this.reload_page_if_diff(json));
+                        .then(json => {
+                            if (local_req_id === this.last_request_id) {
+                                this.reload_page_if_diff(json);
+                            }
+                        });
                 },
 
                 remove(item) {
                     item.quantity--;
                     this.total -= item.unit_price;
+                    // cf. comments on
+                    this.last_request_id += 1;
+                    const local_req_id = this.last_request_id
                     fetch_remove(item.id)
-                        .then(json => this.reload_page_if_diff(json))
+                        .then(json => {
+                            if (local_req_id === this.last_request_id) {
+                                this.reload_page_if_diff(json);
+                            }
+                        });
                 },
 
                 /**
@@ -190,7 +212,7 @@
                 },
 
                 /**
-                 * Clear the user's basket without reloading the page
+                 * Clear the user's basket without reloading the page nor deleting the basket itself
                  */
                 clear_basket() {
                     fetch("{{ url('eboutic:clear_basket') }}", {
