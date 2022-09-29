@@ -141,4 +141,3 @@ def clear_basket(request: HttpRequest) -> HttpResponse:
             return HttpResponse("No basket is currently used", status=404)
     else:
         return HttpResponse("No basket is currently used", status=404)
-

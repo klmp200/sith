@@ -261,18 +261,13 @@ class EbouticApiTest(EbouticTest):
         new_nb_baskets = Basket.objects.filter(user=self.subscriber).count()
         self.assertEqual(res.status_code, 200)
         self.assertEqual(
-            new_nb_baskets, nb_baskets,
+            new_nb_baskets,
+            nb_baskets,
             msg="Clearing the basket should not delete it",
         )
         basket = Basket.objects.get(id=basket.id)
-        self.assertEqual(
-            basket.get_total(), 0,
-            msg="Total price should be equat to 0"
-        )
-        self.assertEqual(
-            basket.items.count(), 0,
-            msg="The basket should be empty"
-        )
+        self.assertEqual(basket.get_total(), 0, msg="Total price should be equat to 0")
+        self.assertEqual(basket.items.count(), 0, msg="The basket should be empty")
 
     def test_clear_non_existing_basket(self):
         # we register no basket in the session
@@ -307,8 +302,7 @@ class EbouticViewTest(EbouticTest):
         basket = self.get_busy_basket()
         amount = basket.get_total()
         response = self.client.post(
-            reverse("eboutic:pay_with_sith"),
-            {"action": "pay_with_sith_account"}
+            reverse("eboutic:pay_with_sith"), {"action": "pay_with_sith_account"}
         )
         self.assertTrue(
             "Le paiement a \\xc3\\xa9t\\xc3\\xa9 effectu\\xc3\\xa9\\n"
@@ -324,12 +318,10 @@ class EbouticViewTest(EbouticTest):
         self.subscriber.customer.amount = initial_money
         self.subscriber.customer.save()
         response = self.client.post(
-            reverse("eboutic:pay_with_sith"),
-            {"action": "pay_with_sith_account"}
+            reverse("eboutic:pay_with_sith"), {"action": "pay_with_sith_account"}
         )
         self.assertTrue(
-            "Le paiement a \\xc3\\xa9chou\\xc3\\xa9"
-            in str(response.content)
+            "Le paiement a \\xc3\\xa9chou\\xc3\\xa9" in str(response.content)
         )
         new_balance = Customer.objects.get(user=self.subscriber).amount
         self.assertEqual(float(new_balance), initial_money)
@@ -342,10 +334,11 @@ class EbouticViewTest(EbouticTest):
         self.assertTrue(response.status_code == 200)
         self.assertTrue(response.content.decode("utf-8") == "")
 
-        selling = Selling.objects \
-            .filter(customer=self.subscriber.customer) \
-            .order_by("-date") \
+        selling = (
+            Selling.objects.filter(customer=self.subscriber.customer)
+            .order_by("-date")
             .first()
+        )
         self.assertEqual(selling.payment_method, "CARD")
         self.assertEqual(selling.quantity, 1)
         self.assertEqual(selling.unit_price, self.barbar.selling_price)
@@ -379,3 +372,26 @@ class EbouticViewTest(EbouticTest):
         self.assertTrue(response.content.decode("utf-8") == "")
         new_balance = Customer.objects.get(user=self.subscriber).amount
         self.assertEqual(new_balance, initial_balance + 15)
+
+    def test_buy_subscribe_product_with_credit_card(self):
+        self.client.login(username="old_subscriber", password="plop")
+        self.old_subscriber.subscriptions.all().delete()
+        response = self.client.get(
+            reverse("core:user_profile", kwargs={"user_id": self.old_subscriber.id})
+        )
+        self.assertTrue("Non cotisant" in str(response.content))
+        self.get_cotis_basket()
+        response = self.client.post(reverse("eboutic:command"))
+        response = self.generate_bank_valid_answer_from_page_content(response.content)
+        self.assertTrue(response.status_code == 200)
+
+        # reload the member
+        subscriber = User.objects.get(id=self.old_subscriber.id)
+
+        self.assertTrue(subscriber.is_subscribed, msg="User should be subscribed now")
+        self.assertEqual(subscriber.subscriptions.count(), 1)
+        sub = subscriber.subscriptions.first()
+        self.assertEqual(sub.payment_method, "CARD")
+        self.assertEqual(sub.member, subscriber)
+        self.assertEqual(sub.subscription_type, "un-semestre")
+        self.assertEqual(sub.location, "EBOUTIC")
