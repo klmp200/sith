@@ -24,13 +24,13 @@
 
 from django.urls import path
 
-from . import api
+from . import views
 
 from eboutic.views import *
 
 urlpatterns = [
     # Subscription views
-    path("", EbouticMain.as_view(), name="main"),
+    path("", views.eboutic_main, name="main"),
     path("command/", EbouticCommand.as_view(), name="command"),
     path("pay/", EbouticPayWithSith.as_view(), name="pay_with_sith"),
     path(
@@ -38,12 +38,4 @@ urlpatterns = [
         EtransactionAutoAnswer.as_view(),
         name="etransation_autoanswer",
     ),
-    # api views
-    path("basket/add-product/<int:product_id>/", api.add_product, name="add_product"),
-    path(
-        "basket/remove-product/<int:product_id>/",
-        api.remove_product,
-        name="remove_product",
-    ),
-    path("basket/clear/", api.clear_basket, name="clear_basket"),
 ]
