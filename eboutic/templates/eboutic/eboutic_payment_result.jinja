@@ -12,6 +12,15 @@
     <p><a href="{{ url('eboutic:main') }}">{% trans %}Return to eboutic{% endtrans %}</a></p>
 </div>
 
+    <script>
+        {# Ca marche pas quand je le fais côté serveur, donc je retire les cookies côté
+         client quand la commande est finie#}
+addEventListener('DOMContentLoaded', () => {
+    document.cookie = "basket_items =;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/eboutic;"
+});
+</script>
+
+
 {% endblock %}
 
 

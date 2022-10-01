@@ -11,8 +11,8 @@
 {% block additional_js %}
     {# This script contains the code to perform requests to manipulate the
     user basket without having to reload the page #}
-    <script src="{{ static("core/js/alpinejs.min.js") }}" defer></script>
     <script src="{{ static('eboutic/js/eboutic.js') }}"></script>
+    <script src="{{ static("core/js/alpinejs.min.js") }}" defer></script>
 {% endblock %}
 
 {% block additional_css %}
@@ -21,15 +21,18 @@
 
 {% block content %}
     <h1>{% trans %}Eboutic{% endtrans %}</h1>
-
     <div id="eboutic" x-data="basket">
         <div id="basket">
             <div class="box-header"><h3>Panier</h3></div>
             <ul class="item-list">
                 {# Starting money #}
                 <li style="margin-bottom: 20px">
-                    <span class="item-name"><strong>{% trans %}Current account amount: {% endtrans %}</strong></span>
-                    <span class="item-price"><strong>{{ "%0.2f"|format(customer_amount) }} €</strong></span>
+                    <span class="item-name">
+                        <strong>{% trans %}Current account amount: {% endtrans %}</strong>
+                    </span>
+                    <span class="item-price">
+                        <strong>{{ "%0.2f"|format(customer_amount) }} €</strong>
+                    </span>
                 </li>
                 <template x-for="item in items">
                     <li class="item-row" x-show="item.quantity > 0">
@@ -45,7 +48,7 @@
                 {# Total price #}
                 <li style="margin-top: 20px">
                     <span class="item-name"><strong>{% trans %}Basket amount: {% endtrans %}</strong></span>
-                    <span x-text="total.toFixed(2) + ' €'" class="item-price"></span>
+                    <span x-text="get_total().toFixed(2) + ' €'" class="item-price"></span>
                 </li>
             </ul>
             <div class="catalog-buttons">
@@ -57,11 +60,11 @@
             </div>
         </div>
         <div id="catalog">
-            {% for category in categories %}
-                {% if eboutic.products.filter(product_type=category).exists() %}
+            {% for category, items in products|groupby('category') %}
+                {% if items|count > 0 %}
                     <section>
                         {# I would have wholeheartedly directly used the header element instead
-                    but it has already been made messy in core/style.scss #}
+                        but it has already been made messy in core/style.scss #}
                         <div class="category-header">
                             <h3>{{ category }}</h3>
                             {% if category.comment %}
@@ -69,7 +72,7 @@
                             {% endif %}
                         </div>
                         <div class="product-group">
-                            {% for p in eboutic.products.filter(product_type=category).all() %}
+                            {% for p in items %}
                                 <button class="product-button"
                                         @click="add_from_catalog({{ p.id }}, '{{ p.name }}', {{ p.selling_price }})">
                                     <div class="box-header">
@@ -92,144 +95,15 @@
             {% endfor %}
         </div>
     </div>
-
     <script>
-        {# Quite frankly, I would have prefered to put this part in the `eboutic.js` file
-          but it uses some variables that are created during the rendering of the template.
-          Therefore it is easier and more straightfoward to leave this here #}
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('basket', () => ({
-                items: [{% for item in basket.items.all() %}{
-                        id: {{ item.product_id }},
-                        name: "{{ item.product_name }}",
-                        quantity: {{ item.quantity }},
-                        unit_price: {{ item.product_unit_price }}
-                        },{% endfor %}],
-                total: {{ basket.get_total() }},
-
-                /* This variable will store the id the last request that was sent to the server.
-                * This is to make sure that when the user send multiple requests in a short span
-                * of time, only the last response of the server shall be compared to the state
-                * of the client-side basket, thus avoiding untimely page reloads
-                *  */
-                last_request_id: 0,
-
-                add(item) {
-                    item.quantity++;
-                    this.total += item.unit_price;
-                    // increase the id.
-                    // if local_req_id !== this.last_request_id when executing
-                    // the callback, it means that another request has been sent afterwards
-                    this.last_request_id += 1;
-                    const local_req_id = this.last_request_id
-                    fetch_add(item.id)
-                        .then(json => {
-                            if (local_req_id === this.last_request_id) {
-                                this.reload_page_if_diff(json);
-                            }
-                        });
-                },
-
-                remove(item) {
-                    item.quantity--;
-                    this.total -= item.unit_price;
-                    // cf. comments on
-                    this.last_request_id += 1;
-                    const local_req_id = this.last_request_id
-                    fetch_remove(item.id)
-                        .then(json => {
-                            if (local_req_id === this.last_request_id) {
-                                this.reload_page_if_diff(json);
-                            }
-                        });
-                },
-
-                /**
-                 * Given a json response previously returned by the server,
-                 * check if this response is well formated and if the basket
-                 * as it exists server-side is the same as the basket client-side.
-                 *
-                 * If the two baskets do not correspond, reload the page.
-                 * @param json : JSON
-                 */
-                reload_page_if_diff(json) {
-                    // Reload if json is not well formatted
-                    if (json === undefined || json == null) {
-                        window.location.reload();
-                    }
-                    if (isNaN(parseFloat(json["total"]))) {
-                        window.location.reload();
-                    }
-                    if (Math.abs(json["total"] - this.total) > 0.001) {
-                        // Numbers aren't directly compared because of floating point precision
-                        window.location.reload();
-                    }
-
-                    if (json["items"] === undefined) {
-                        window.location.reload();
-                    }
-                    for (const item of json["items"]) {
-                        if (isNaN(parseInt(item["product_id"])) || isNaN(parseInt(item["quantity"]))) {
-                            window.location.reload();
-                        }
-                        const local_item = this.items.find(i => i.id === item["product_id"])
-                        if (local_item === undefined || local_item.quantity !== item["quantity"]) {
-                            window.location.reload();
-                        }
-                    }
-                },
-
-                /**
-                 * Create an item in the basket if it was not already in
-                 * @param id : int the id of the product to add
-                 * @param name : String the name of the product
-                 * @param price : number the unit price of the product
-                 */
-                create_item(id, name, price) {
-                    let new_item = {
-                        id: id,
-                        name: name,
-                        quantity: 0,
-                        unit_price: price
-                    };
-                    this.items.push(new_item);
-                    this.add(new_item);
-                },
-
-                /**
-                 * add an item to the basket.
-                 * This is called when the user click
-                 * on a button in the catalog (left side of the page)
-                 * @param id : int the id of the product to add
-                 * @param name : String the name of the product
-                 * @param price : number the unit price of the product
-                 */
-                add_from_catalog(id, name, price) {
-                    const item = this.items.find(e => e.id === id)
-                    if (item === undefined) {
-                        this.create_item(id, name, price);
-                    } else {
-                        // the user clicked on an item which is already in the basket
-                        this.add(item);
-                    }
-                },
-
-                /**
-                 * Clear the user's basket without reloading the page nor deleting the basket itself
-                 */
-                clear_basket() {
-                    fetch("{{ url('eboutic:clear_basket') }}", {
-                        method: "POST",
-                        headers: {'X-CSRFToken': csrftoken},
-                        mode: 'same-origin'
-                    }).then(res => {
-                        if (res.ok) {
-                            this.items = []
-                            this.total = 0
-                        }
-                    })
-                }
-            }))
-        })
+        {# Variable built during rendering of the template
+         used in the /core/static/eboutic/js/eboutic.js #}
+        const starting_items = [{% for item in basket_items %}{
+        <!-- {{ item }} -->
+                'id': {{ item["product_id"] }},
+                'name': "{{ item["product_name"] }}",
+                'quantity': {{ item["quantity"] }},
+                'unit_price': {{ item["product_unit_price"] }}
+                }{% endfor %}];
     </script>
 {% endblock %}
