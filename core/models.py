@@ -325,6 +325,13 @@ class User(AbstractBaseUser):
         )
         return s.exists()
 
+    @cached_property
+    def account_balance(self):
+        if hasattr(self, "customer"):
+            return self.customer.amount
+        else:
+            return 0
+
     _club_memberships = {}
     _group_names = {}
     _group_ids = {}
