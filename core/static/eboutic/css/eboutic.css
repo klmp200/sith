@@ -2,13 +2,15 @@
     float: right;
     width: 300px;
     border: black 1px solid;
+    border-radius: 8px;
+    /*margin-top: -50px;*/
 }
 
 @media screen and (max-width: 765px) {
     #basket {
         float: unset;
         display: block;
-        margin: auto;
+        margin: 20px auto auto;
     }
 }
 
@@ -126,8 +128,19 @@
 .catalog-buttons {
     display: flex;
     justify-content: center;
-    column-gap: 40px;
+    column-gap: 30px;
     margin: 20px 0;
+}
+.catalog-buttons input, .catalog-buttons button {
+    font-size: 15px;
+    font-weight: normal;!important;
+    background-color: #354a5f;
+    color: white;
+    min-width: 60px;
+}
+
+.catalog-buttons input:hover, .catalog-buttons button:hover {
+    background-color: #495e73;
 }
 
 .catalog-buttons form {

@@ -13,27 +13,91 @@ function getCookie(name) {
     }
     return cookieValue;
 }
-const csrftoken = getCookie('csrftoken');
 
-function fetch_edit_basket(type, p_id) {
-    const request = new Request("/eboutic/basket/" + type + "/" + p_id + "/", {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': csrftoken,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
+function get_starting_items() {
+    console.log(starting_items)
+    if (starting_items !== null && starting_items !== undefined) {
+        if (starting_items.length > 0) {
+            return starting_items;
+        }
+    }
+    const cookie = getCookie("basket_items");
+    if (cookie === undefined || cookie === null) {
+        return [];
+    }
+    const biscuit = JSON.parse(cookie)
+    if (biscuit.length > 0) {
+        return biscuit;
+    }
+    return [];
+}
+
+document.addEventListener('alpine:init', () => {
+    Alpine.data('basket', () => ({
+        items: get_starting_items(),
+
+        get_total() {
+            let total = 0;
+            for (const item of this.items) {
+                total += item["quantity"] * item["unit_price"];
+            }
+            return total;
         },
-        mode: 'same-origin',
-    })
-    return fetch(request).then(response => {
-        return response.json()
-    })
-}
 
-function fetch_add(p_id) {
-    return fetch_edit_basket("add-product", p_id);
-}
+        add(item) {
+            item.quantity++;
+            this.edit_cookies()
+        },
 
-function fetch_remove(p_id) {
-    return fetch_edit_basket("remove-product", p_id);
-}
+        remove(item) {
+            item.quantity--;
+            this.edit_cookies()
+        },
+
+        clear_basket() {
+            this.items = []
+            this.edit_cookies();
+        },
+
+        edit_cookies() {
+            // a cookie survives an hour
+            document.cookie = "basket_items=" + JSON.stringify(this.items) + ";Max-Age=3600";
+            document.cookie = "basket_total=" + JSON.stringify(this.total) + ";Max-Age=3600";
+        },
+
+        /**
+         * Create an item in the basket if it was not already in
+         * @param id : int the id of the product to add
+         * @param name : String the name of the product
+         * @param price : number the unit price of the product
+         */
+        create_item(id, name, price) {
+            let new_item = {
+                id: id,
+                name: name,
+                quantity: 0,
+                unit_price: price
+            };
+            this.items.push(new_item);
+            this.add(new_item);
+        },
+
+        /**
+         * add an item to the basket.
+         * This is called when the user click
+         * on a button in the catalog (left side of the page)
+         * @param id : int the id of the product to add
+         * @param name : String the name of the product
+         * @param price : number the unit price of the product
+         */
+        add_from_catalog(id, name, price) {
+            const item = this.items.find(e => e.id === id)
+            if (item === undefined) {
+                this.create_item(id, name, price);
+            } else {
+                // the user clicked on an item which is already in the basket
+                this.add(item);
+            }
+        },
+    }))
+})
