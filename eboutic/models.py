@@ -21,6 +21,7 @@
 # Place - Suite 330, Boston, MA 02111-1307, USA.
 #
 #
+import typing
 
 from django.conf import settings
 from django.db import models, DataError
@@ -84,14 +85,14 @@ class Basket(models.Model):
         if item.quantity <= 0:
             item.delete()
 
-    def clear(self):
+    def clear(self) -> None:
         """
         Remove all items from this basket without deleting the basket
         """
         BasketItem.objects.filter(basket=self).delete()
 
     @cached_property
-    def contains_refilling_item(self):
+    def contains_refilling_item(self) -> bool:
         return self.items.filter(
             type_id=settings.SITH_COUNTER_PRODUCTTYPE_REFILLING
         ).exists()
@@ -103,23 +104,17 @@ class Basket(models.Model):
         return float(total) if total is not None else 0
 
     @classmethod
-    def from_request(cls, request):
+    def from_session(cls, session) -> typing.Union["Basket", None]:
         """
         Given an HttpRequest django object, returns the basket used in the current session
         if it exists else delete all previous baskets and create a new one
         """
-        if "basket_id" in request.session:
+        if "basket_id" in session:
             try:
-                return cls.objects.get(id=request.session["basket_id"])
+                return cls.objects.get(id=session["basket_id"])
             except cls.DoesNotExist:
-                pass
-        # if here, it means there is no basket used in the current session
-        # so we must create a new one
-        basket = cls(user=request.user)
-        basket.save()
-        request.session["basket_id"] = basket.id
-        request.session.modified = True
-        return basket
+                return None
+        return None
 
     def __str__(self):
         return "%s's basket (%d items)" % (self.user, self.items.all().count())
@@ -139,9 +134,6 @@ class Invoice(models.Model):
     )
     date = models.DateTimeField(_("date"), auto_now=True)
     validated = models.BooleanField(_("validated"), default=False)
-
-    def __str__(self):
-        return "%s - %s - %s" % (self.user, self.get_total(), self.date)
 
     def get_total(self) -> float:
         total = self.items.aggregate(
@@ -192,6 +184,9 @@ class Invoice(models.Model):
                 new.save()
         self.validated = True
         self.save()
+
+    def __str__(self):
+        return "%s - %s - %s" % (self.user, self.get_total(), self.date)
 
 
 class AbstractBaseItem(models.Model):
