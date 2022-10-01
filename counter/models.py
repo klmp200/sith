@@ -31,7 +31,6 @@ from django.urls import reverse
 from django.core.validators import MinLengthValidator
 from django.forms import ValidationError
 from django.utils.functional import cached_property
-from django.core.exceptions import PermissionDenied
 
 from datetime import timedelta, date
 import random
@@ -90,6 +89,7 @@ class Customer(models.Model):
             .subscription_end
         ) < timedelta(days=90)
 
+    @staticmethod
     def generate_account_id(number):
         number = str(number)
         letter = random.choice(string.ascii_lowercase)
@@ -212,9 +212,6 @@ class Product(models.Model):
             return True
         return False
 
-    def __str__(self):
-        return "%s (%s)" % (self.name, self.code)
-
     def get_absolute_url(self):
         return reverse("counter:product_list")
 
@@ -237,6 +234,9 @@ class Product(models.Model):
             if user.is_in_group(group.name):
                 return True
         return False
+
+    def __str__(self):
+        return "%s (%s)" % (self.name, self.code)
 
 
 class Counter(models.Model):
