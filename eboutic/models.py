@@ -194,7 +194,7 @@ class AbstractBaseItem(models.Model):
     product_name = models.CharField(_("product name"), max_length=255)
     type_id = models.IntegerField(_("product type id"))
     product_unit_price = CurrencyField(_("unit price"))
-    quantity = models.IntegerField(_("quantity"))
+    quantity = models.PositiveIntegerField(_("quantity"))
 
     class Meta:
         abstract = True
