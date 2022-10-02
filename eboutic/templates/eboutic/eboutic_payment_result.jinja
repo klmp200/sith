@@ -4,21 +4,14 @@
 <h3>{% trans %}Eboutic{% endtrans %}</h3>
 
 <div>
-    {% if not_enough %}
-    {% trans %}Payment failed{% endtrans %}
-    {% else %}
+    {% if success %}
     {% trans %}Payment successful{% endtrans %}
+    {% else %}
+    {% trans %}Payment failed{% endtrans %}
     {% endif %}
     <p><a href="{{ url('eboutic:main') }}">{% trans %}Return to eboutic{% endtrans %}</a></p>
 </div>
 
-    <script>
-        {# Ca marche pas quand je le fais côté serveur, donc je retire les cookies côté
-         client quand la commande est finie#}
-addEventListener('DOMContentLoaded', () => {
-    document.cookie = "basket_items =;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/eboutic;"
-});
-</script>
 
 
 {% endblock %}

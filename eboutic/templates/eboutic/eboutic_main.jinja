@@ -11,22 +11,22 @@
 {% block additional_js %}
     {# This script contains the code to perform requests to manipulate the
     user basket without having to reload the page #}
-    <script src="{{ static('eboutic/js/eboutic.js') }}"></script>
+    <script src="{{ static('eboutic/js/eboutic.min.js') }}"></script>
     <script src="{{ static("core/js/alpinejs.min.js") }}" defer></script>
 {% endblock %}
 
 {% block additional_css %}
-    <link rel="stylesheet" href="{{ static('eboutic/css/eboutic.css') }}">
+    <link rel="stylesheet" href="{{ static('eboutic/css/eboutic.min.css') }}">
 {% endblock %}
 
 {% block content %}
-    <h1>{% trans %}Eboutic{% endtrans %}</h1>
+    <h1 id="eboutic-title">{% trans %}Eboutic{% endtrans %}</h1>
     <div id="eboutic" x-data="basket">
         <div id="basket">
             <div class="box-header"><h3>Panier</h3></div>
             <ul class="item-list">
                 {# Starting money #}
-                <li style="margin-bottom: 20px">
+                <li>
                     <span class="item-name">
                         <strong>{% trans %}Current account amount: {% endtrans %}</strong>
                     </span>
@@ -34,11 +34,11 @@
                         <strong>{{ "%0.2f"|format(customer_amount) }} €</strong>
                     </span>
                 </li>
-                <template x-for="item in items">
+                <template x-for="item in items" :key="item.id">
                     <li class="item-row" x-show="item.quantity > 0">
                         <span class="item-name" x-text="item.name"></span>
                         <div class="item-quantity">
-                            <i class="fa fa-minus" @click="remove(item)"></i>
+                            <i class="fa fa-minus fa-xs" @click="remove(item.id)"></i>
                             <span x-text="item.quantity"></span>
                             <i class="fa fa-plus" @click="add(item)"></i>
                         </div>
@@ -52,10 +52,16 @@
                 </li>
             </ul>
             <div class="catalog-buttons">
-                <button @click="clear_basket()">{% trans %}clear{% endtrans %}</button>
+                <button @click="clear_basket()" class="clear">
+                    <i class="fa fa-trash"></i>
+                    {% trans %}Clear{% endtrans %}
+                </button>
                 <form method="post" action="{{ url('eboutic:command') }}">
                     {% csrf_token %}
-                    <input type="submit" value="{% trans %}validate{% endtrans %}"/>
+                    <button class="validate">
+                        <i class="fa fa-check"></i>
+                        <input type="submit" value="{% trans %}Validate{% endtrans %}"/>
+                    </button>
                 </form>
             </div>
         </div>
@@ -75,18 +81,14 @@
                             {% for p in items %}
                                 <button class="product-button"
                                         @click="add_from_catalog({{ p.id }}, '{{ p.name }}', {{ p.selling_price }})">
-                                    <div class="box-header">
-                                        <h5>{{ p.name }}</h5>
-                                    </div>
-                                    <div class="product-body">
-                                        {% if p.icon %}
-                                            <img src="{{ p.icon.url }}" alt="image de {{ p.product_name }}">
-                                        {% else %}
-                                            <img src="{{ static('core/img/na.gif') }}"
-                                                 alt="image de {{ p.product_name }}">
-                                        {% endif %}
-                                        <span>{{ p.selling_price }} €</span>
-                                    </div>
+                                    {% if p.icon %}
+                                        <img src="{{ p.icon.url }}" alt="image de {{ p.product_name }}" width="40px"
+                                             height="40px">
+                                    {% else %}
+                                        <i class="fa fa-2x fa-picture-o"></i>
+                                    {% endif %}
+                                    <p><strong>{{ p.name }}</strong></p>
+                                    <p>{{ p.selling_price }} €</p>
                                 </button>
                             {% endfor %}
                         </div>
@@ -99,11 +101,10 @@
         {# Variable built during rendering of the template
          used in the /core/static/eboutic/js/eboutic.js #}
         const starting_items = [{% for item in basket_items %}{
-        <!-- {{ item }} -->
                 'id': {{ item["product_id"] }},
                 'name': "{{ item["product_name"] }}",
                 'quantity': {{ item["quantity"] }},
-                'unit_price': {{ item["product_unit_price"] }}
+                'unit_price': {{ item["product_unit_price"]|float }}
                 }{% endfor %}];
     </script>
 {% endblock %}

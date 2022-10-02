@@ -14,15 +14,10 @@ function getCookie(name) {
     return cookieValue;
 }
 
+
 function get_starting_items() {
-    console.log(starting_items)
-    if (starting_items !== null && starting_items !== undefined) {
-        if (starting_items.length > 0) {
-            return starting_items;
-        }
-    }
     const cookie = getCookie("basket_items");
-    if (cookie === undefined || cookie === null) {
+    if (!cookie) {
         return [];
     }
     const biscuit = JSON.parse(cookie)
@@ -49,9 +44,14 @@ document.addEventListener('alpine:init', () => {
             this.edit_cookies()
         },
 
-        remove(item) {
-            item.quantity--;
-            this.edit_cookies()
+        remove(item_id) {
+            const index = this.items.findIndex(e => e.id === item_id);
+            if (index < 0) return;
+            this.items[index].quantity -= 1;
+            if (this.items[index].quantity === 0) {
+                this.items = this.items.filter((e) => e.id !== this.items[index].id);
+            }
+            this.edit_cookies();
         },
 
         clear_basket() {
@@ -62,7 +62,6 @@ document.addEventListener('alpine:init', () => {
         edit_cookies() {
             // a cookie survives an hour
             document.cookie = "basket_items=" + JSON.stringify(this.items) + ";Max-Age=3600";
-            document.cookie = "basket_total=" + JSON.stringify(this.total) + ";Max-Age=3600";
         },
 
         /**
