@@ -40,7 +40,9 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, View
 
-from counter.models import Customer, Counter, Selling
+import core.views
+import sith.urls
+from counter.models import Customer, Counter, Selling, Product
 from eboutic.exceptions import (
     CookieEmpty,
     CookieNegativeIndex,
@@ -110,9 +112,16 @@ class EbouticCommand(TemplateView):
         basket.save()
         for item in req_basket:
             eboutique = Counter.objects.get(type="EBOUTIC")
-            product = get_object_or_404(eboutique.products, id=(item["id"]))
+            try:
+                product = eboutique.products.get(id=(item["id"]))
+            except Product.DoesNotExist:
+                res = redirect("eboutic:main")
+                res.delete_cookie("basket_items", "/eboutic")
+                return res
             if not product.can_be_sold_to(request.user):
-                raise PermissionDenied
+                res = redirect("eboutic:main")
+                res.delete_cookie("basket_items", "/eboutic")
+                return res
             basket.add_product(product, item["quantity"])
         request.session["basket_id"] = basket.id
         request.session.modified = True
@@ -161,7 +170,7 @@ class EbouticCommand(TemplateView):
 
 @login_required
 @require_POST
-def pay_with_sith(request, *args, **kwargs):
+def pay_with_sith(request):
     basket = Basket.from_session(request.session)
     refilling = settings.SITH_COUNTER_PRODUCTTYPE_REFILLING
     if basket is None or basket.items.filter(type_id=refilling).exists():
