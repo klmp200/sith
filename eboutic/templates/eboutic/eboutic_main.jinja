@@ -12,7 +12,7 @@
     {# This script contains the code to perform requests to manipulate the
     user basket without having to reload the page #}
     <script src="{{ static('eboutic/js/eboutic.min.js') }}"></script>
-    <script src="{{ static("core/js/alpinejs.min.js") }}" defer></script>
+    <script src="{{ static('core/js/alpinejs.min.js') }}" defer></script>
 {% endblock %}
 
 {% block additional_css %}
@@ -97,14 +97,4 @@
             {% endfor %}
         </div>
     </div>
-    <script>
-        {# Variable built during rendering of the template
-         used in the /core/static/eboutic/js/eboutic.js #}
-        const starting_items = [{% for item in basket_items %}{
-                'id': {{ item["product_id"] }},
-                'name': "{{ item["product_name"] }}",
-                'quantity': {{ item["quantity"] }},
-                'unit_price': {{ item["product_unit_price"]|float }}
-                }{% endfor %}];
-    </script>
 {% endblock %}
