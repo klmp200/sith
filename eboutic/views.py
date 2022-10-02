@@ -37,12 +37,16 @@ from django.db.models import F
 from django.http import HttpResponse, HttpRequest
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils.decorators import method_decorator
-from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, View
 
 from counter.models import Customer, Counter, Selling
-from eboutic.exceptions import CookieEmpty, CookieNegativeIndex, CookieImproperlyFormatted, EbouticCookieError
+from eboutic.exceptions import (
+    CookieEmpty,
+    CookieNegativeIndex,
+    CookieImproperlyFormatted,
+    EbouticCookieError,
+)
 from eboutic.models import Basket, Invoice, InvoiceItem
 
 
@@ -198,10 +202,10 @@ class EtransactionAutoAnswer(View):
     # /la-solution-paybox-system/gestion-de-la-reponse/
     def get(self, request, *args, **kwargs):
         if (
-                not "Amount" in request.GET.keys()
-                or not "BasketID" in request.GET.keys()
-                or not "Error" in request.GET.keys()
-                or not "Sig" in request.GET.keys()
+            not "Amount" in request.GET.keys()
+            or not "BasketID" in request.GET.keys()
+            or not "Error" in request.GET.keys()
+            or not "Sig" in request.GET.keys()
         ):
             return HttpResponse("Bad arguments", status=400)
         key = crypto.load_publickey(crypto.FILETYPE_PEM, settings.SITH_EBOUTIC_PUB_KEY)
