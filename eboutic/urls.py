@@ -22,17 +22,19 @@
 #
 #
 
-from django.urls import path
-
-from . import views
+from django.urls import path, register_converter
 
 from eboutic.views import *
+from eboutic.converters import PaymentResultConverter
+
+register_converter(PaymentResultConverter, 'res')
 
 urlpatterns = [
     # Subscription views
-    path("", views.eboutic_main, name="main"),
+    path("", eboutic_main, name="main"),
     path("command/", EbouticCommand.as_view(), name="command"),
-    path("pay/", EbouticPayWithSith.as_view(), name="pay_with_sith"),
+    path("pay/", pay_with_sith, name="pay_with_sith"),
+    path("pay/<res:result>/", payment_result, name="payment_result"),
     path(
         "et_autoanswer/",
         EtransactionAutoAnswer.as_view(),

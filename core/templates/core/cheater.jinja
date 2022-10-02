@@ -1,0 +1,23 @@
+{#
+Template à afficher aux petits malins qui ont voulu niquer le site en faisant des choses
+qu'ils sont pas censés faire (genre jouer avec les cookies)
+#}
+
+{% extends "core/base.jinja" %}
+
+{% block content %}
+    <p>
+    Alors comme ça t'as essayé de nous niquer en jouant avec le site ?
+    </p>
+    <p>
+    Petit fdp.
+    </p>
+
+    <img src="{{ static('core/img/j_aime_pas_trop_les_voleurs_et_les_fdp.jpg') }}"
+         alt="Bonjour, c'est moi, Orson Wells et ceci est ma maison que vous voyez derrière, là.
+              Pas mal, non ? C'est français. Je me permets d'interrompre votre navigation sur ce site
+              parce qu'on se fout un peu de ma gueule. C'est du vol et du piratage.
+              J'aime pas trop les voleurs et les fils de pute"
+         width="550" height="366"
+        style="display: block; margin: auto">
+{% endblock %}

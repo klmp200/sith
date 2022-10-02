@@ -32,17 +32,17 @@ from OpenSSL import crypto
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import SuspiciousOperation, PermissionDenied
-from django.db import transaction, DataError
+from django.db import transaction, DataError, DatabaseError
 from django.db.models import F
-from django.http import HttpResponse, HttpResponseRedirect, HttpRequest
+from django.http import HttpResponse, HttpRequest
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse_lazy, reverse
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, View
 
 from counter.models import Customer, Counter, Selling
+from eboutic.exceptions import CookieEmpty, CookieNegativeIndex, CookieImproperlyFormatted, EbouticCookieError
 from eboutic.models import Basket, Invoice, InvoiceItem
 
 
@@ -56,30 +56,46 @@ def eboutic_main(request: HttpRequest) -> HttpResponse:
     )
     if not request.user.subscriptions.exists():
         products = products.exclude(settings.SITH_PRODUCTTYPE_SUBSCRIPTION)
-    if (b := Basket.from_session(request.session)) is not None:
-        basket_items = list(b.items.all())
-    else:
-        basket_items = []
     context = {
         "products": products,
         "customer_amount": request.user.account_balance,
-        "items": basket_items,
     }
     return render(request, "eboutic/eboutic_main.jinja", context)
+
+
+@require_GET
+@login_required
+def payment_result(request, result: str) -> HttpResponse:
+    context = {"success": result == "success"}
+    return render(request, "eboutic/eboutic_payment_result.jinja", context)
 
 
 class EbouticCommand(TemplateView):
     template_name = "eboutic/eboutic_makecommand.jinja"
 
-    @method_decorator(login_required())
+    @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
-        return redirect(reverse("eboutic:main"))
+        return redirect("eboutic:main")
+
+    @staticmethod
+    def __check_cookies(cookies: list) -> None:
+        if len(cookies) == 0:
+            raise CookieEmpty()
+        for cookie in cookies:
+            if any(key not in cookie for key in ("id", "quantity")):
+                raise CookieImproperlyFormatted()
+            if cookie["quantity"] < 0:
+                raise CookieNegativeIndex()
 
     @method_decorator(login_required)
     def post(self, request: HttpRequest, *args, **kwargs):
-        req_basket = json.loads(request.COOKIES.get("basket_items", []))
-        if len(req_basket) == 0:
-            return redirect(reverse("eboutic:main"))
+        req_basket = json.loads(request.COOKIES.get("basket_items", "[]"))
+        try:
+            self.__check_cookies(req_basket)
+        except EbouticCookieError as e:
+            res = e.get_redirection(request)
+            res.delete_cookie("basket_items", "/eboutic")
+            return res
         if "basket_id" in request.session:
             basket, _ = Basket.objects.get_or_create(
                 id=request.session["basket_id"], user=request.user
@@ -89,9 +105,8 @@ class EbouticCommand(TemplateView):
             basket = Basket.objects.create(user=request.user)
         basket.save()
         for item in req_basket:
-            product_id = item["id"]
             eboutique = Counter.objects.get(type="EBOUTIC")
-            product = get_object_or_404(eboutique.products, id=product_id)
+            product = get_object_or_404(eboutique.products, id=(item["id"]))
             if not product.can_be_sold_to(request.user):
                 raise PermissionDenied
             basket.add_product(product, item["quantity"])
@@ -140,68 +155,53 @@ class EbouticCommand(TemplateView):
         return kwargs
 
 
-class EbouticPayWithSith(TemplateView):
-    template_name = "eboutic/eboutic_payment_result.jinja"
-
-    def post(self, request, *args, **kwargs):
+@login_required
+@require_POST
+def pay_with_sith(request, *args, **kwargs):
+    basket = Basket.from_session(request.session)
+    refilling = settings.SITH_COUNTER_PRODUCTTYPE_REFILLING
+    if basket is None or basket.items.filter(type_id=refilling).exists():
+        return redirect("eboutic:main")
+    c = Customer.objects.filter(user__id=basket.user.id).first()
+    if c is None:
+        return redirect("eboutic:main")
+    if c.amount < basket.get_total():
+        res = redirect("eboutic:payment_result", "failure")
+    else:
+        eboutic = Counter.objects.filter(type="EBOUTIC").first()
         try:
             with transaction.atomic():
-                if (
-                    "basket_id" not in request.session.keys()
-                    or not request.user.is_authenticated
-                ):
-                    return HttpResponseRedirect(
-                        reverse_lazy("eboutic:main", args=self.args, kwargs=kwargs)
-                    )
-                b = Basket.objects.filter(id=request.session["basket_id"]).first()
-                if (
-                    b is None
-                    or b.items.filter(
-                        type_id=settings.SITH_COUNTER_PRODUCTTYPE_REFILLING
-                    ).exists()
-                ):
-                    return HttpResponseRedirect(
-                        reverse_lazy("eboutic:main", args=self.args, kwargs=kwargs)
-                    )
-                c = Customer.objects.filter(user__id=b.user.id).first()
-                if c is None:
-                    return HttpResponseRedirect(
-                        reverse_lazy("eboutic:main", args=self.args, kwargs=kwargs)
-                    )
-                kwargs["not_enough"] = True
-                if c.amount < b.get_total():
-                    raise DataError(_("You do not have enough money to buy the basket"))
-                else:
-                    eboutic = Counter.objects.filter(type="EBOUTIC").first()
-                    for it in b.items.all():
-                        product = eboutic.products.filter(id=it.product_id).first()
-                        Selling(
-                            label=it.product_name,
-                            counter=eboutic,
-                            club=product.club,
-                            product=product,
-                            seller=c.user,
-                            customer=c,
-                            unit_price=it.product_unit_price,
-                            quantity=it.quantity,
-                            payment_method="SITH_ACCOUNT",
-                        ).save()
-                    b.delete()
-                    kwargs["not_enough"] = False
-                    request.session.pop("basket_id", None)
-        except DataError as e:
-            kwargs["not_enough"] = True
-        return self.render_to_response(self.get_context_data(**kwargs))
+                for it in basket.items.all():
+                    product = eboutic.products.get(id=it.product_id)
+                    Selling(
+                        label=it.product_name,
+                        counter=eboutic,
+                        club=product.club,
+                        product=product,
+                        seller=c.user,
+                        customer=c,
+                        unit_price=it.product_unit_price,
+                        quantity=it.quantity,
+                        payment_method="SITH_ACCOUNT",
+                    ).save()
+                basket.delete()
+                request.session.pop("basket_id", None)
+                res = redirect("eboutic:payment_result", "success")
+        except DatabaseError:
+            res = redirect("eboutic:payment_result", "failure")
+    res.delete_cookie("basket_items", "/eboutic")
+    return res
 
 
 class EtransactionAutoAnswer(View):
-    # Response documentation http://www1.paybox.com/espace-integrateur-documentation/la-solution-paybox-system/gestion-de-la-reponse/
+    # Response documentation http://www1.paybox.com/espace-integrateur-documentation
+    # /la-solution-paybox-system/gestion-de-la-reponse/
     def get(self, request, *args, **kwargs):
         if (
-            not "Amount" in request.GET.keys()
-            or not "BasketID" in request.GET.keys()
-            or not "Error" in request.GET.keys()
-            or not "Sig" in request.GET.keys()
+                not "Amount" in request.GET.keys()
+                or not "BasketID" in request.GET.keys()
+                or not "Error" in request.GET.keys()
+                or not "Sig" in request.GET.keys()
         ):
             return HttpResponse("Bad arguments", status=400)
         key = crypto.load_publickey(crypto.FILETYPE_PEM, settings.SITH_EBOUTIC_PUB_KEY)
@@ -253,7 +253,7 @@ class EtransactionAutoAnswer(View):
                 return HttpResponse(
                     "Basket processing failed with error: " + repr(e), status=500
                 )
-            return HttpResponse()
+            return HttpResponse("Payment successful", status=200)
         else:
             return HttpResponse(
                 "Payment failed with error: " + request.GET["Error"], status=202
