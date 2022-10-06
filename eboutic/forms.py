@@ -23,6 +23,7 @@
 #
 
 import json
+import re
 
 from django.http import HttpRequest
 from django.utils.translation import gettext as _
@@ -60,6 +61,7 @@ class BasketForm:
     without calling `form.clean()`. In this case, the latter method shall be
     implicitly called.
     """
+    flat_json_re = re.compile(r"^\[\{[^{}\]\[]*\},?\]$")
 
     def __init__(self, request: HttpRequest):
         self.user = request.user
@@ -86,6 +88,11 @@ class BasketForm:
             self.error_messages.add(
                 "No cookie was found in the request to validate your basket."
             )
+            return
+        # check that the json is not nested before parsing it to make sure
+        # malicious user can't ddos the server with deeply nested json
+        if not BasketForm.flat_json_re.match(basket):
+            self.error_messages.add("The request was badly formatted.")
             return
         try:
             basket = json.loads(basket)
