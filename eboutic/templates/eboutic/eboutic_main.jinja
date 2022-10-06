@@ -23,7 +23,17 @@
     <h1 id="eboutic-title">{% trans %}Eboutic{% endtrans %}</h1>
     <div id="eboutic" x-data="basket">
         <div id="basket">
-            <div class="box-header"><h3>Panier</h3></div>
+            <h3>Panier</h3>
+            {% if errors %}
+                <div class="error-message">
+                    {% for error in errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                {% trans %}
+                    All incorrect elements have been removed from your basket
+                {% endtrans %}
+                </div>
+            {% endif %}
             <ul class="item-list">
                 {# Starting money #}
                 <li>

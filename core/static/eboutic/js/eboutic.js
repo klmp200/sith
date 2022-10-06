@@ -21,7 +21,7 @@ function get_starting_items() {
         return [];
     }
     const biscuit = JSON.parse(cookie)
-    if (biscuit.length > 0) {
+    if (Array.isArray(biscuit)) {
         return biscuit;
     }
     return [];

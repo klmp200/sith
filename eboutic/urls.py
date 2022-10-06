@@ -1,7 +1,8 @@
 # -*- coding:utf-8 -*
 #
-# Copyright 2016,2017
+# Copyright 2016,2017, 2022
 # - Skia <skia@libskia.so>
+# - Maréchal <thgirod@hotmail.com>
 #
 # Ce fichier fait partie du site de l'Association des Étudiants de l'UTBM,
 # http://ae.utbm.fr.

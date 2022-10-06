@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('eboutic', '0001_initial'),
+        ("eboutic", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='basketitem',
-            name='quantity',
-            field=models.PositiveIntegerField(verbose_name='quantity'),
+            model_name="basketitem",
+            name="quantity",
+            field=models.PositiveIntegerField(verbose_name="quantity"),
         ),
         migrations.AlterField(
-            model_name='invoiceitem',
-            name='quantity',
-            field=models.PositiveIntegerField(verbose_name='quantity'),
+            model_name="invoiceitem",
+            name="quantity",
+            field=models.PositiveIntegerField(verbose_name="quantity"),
         ),
     ]

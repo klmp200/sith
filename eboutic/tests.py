@@ -2,6 +2,7 @@
 #
 # Copyright 2016,2017
 # - Skia <skia@libskia.so>
+# - Maréchal <thgirod@hotmail.com
 #
 # Ce fichier fait partie du site de l'Association des Étudiants de l'UTBM,
 # http://ae.utbm.fr.
@@ -157,10 +158,14 @@ class EbouticTest(TestCase):
             {{"id": {max_id + 1}, "name": "", "quantity": 1, "unit_price": 28}}
         ]"""
         response = self.client.post(reverse("eboutic:command"))
-        self.assertEqual(
-            'basket_items=""; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Path=/eboutic',
+        self.assertIn(
+            'basket_items=""',
             self.client.cookies["basket_items"].OutputString(),
-        )  # this cookie should be cleared on error
+        )
+        self.assertIn(
+            "Path=/eboutic",
+            self.client.cookies["basket_items"].OutputString(),
+        )
         self.assertRedirects(response, "/eboutic/")
 
     def test_submit_basket_illegal_quantity(self):
@@ -171,10 +176,7 @@ class EbouticTest(TestCase):
             {"id": 4, "name": "Barbar", "quantity": -1, "unit_price": 1.7}
         ]"""
         response = self.client.post(reverse("eboutic:command"))
-        self.assertInHTML(
-            "Alors comme ça t'as essayé de nous niquer en jouant avec le site ?",
-            response.content.decode(),
-        )
+        self.assertRedirects(response, "/eboutic/")
 
     def test_buy_subscribe_product_with_credit_card(self):
         self.client.login(username="old_subscriber", password="plop")

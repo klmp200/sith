@@ -31,30 +31,24 @@ from datetime import datetime
 from OpenSSL import crypto
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import SuspiciousOperation, PermissionDenied
-from django.db import transaction, DataError, DatabaseError
+from django.core.exceptions import SuspiciousOperation
+from django.db import transaction, DatabaseError
 from django.db.models import F
 from django.http import HttpResponse, HttpRequest
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, View
 
-import core.views
-import sith.urls
 from counter.models import Customer, Counter, Selling, Product
-from eboutic.exceptions import (
-    CookieEmpty,
-    CookieNegativeIndex,
-    CookieImproperlyFormatted,
-    EbouticCookieError,
-)
+from eboutic.forms import BasketForm
 from eboutic.models import Basket, Invoice, InvoiceItem
 
 
 @login_required
 @require_GET
 def eboutic_main(request: HttpRequest) -> HttpResponse:
+    errors = request.session.pop("errors", None)
     products = (
         Counter.objects.get(type="EBOUTIC")
         .products.exclude(product_type__isnull=True)
@@ -63,6 +57,7 @@ def eboutic_main(request: HttpRequest) -> HttpResponse:
     if not request.user.subscriptions.exists():
         products = products.exclude(settings.SITH_PRODUCTTYPE_SUBSCRIPTION)
     context = {
+        "errors": errors,
         "products": products,
         "customer_amount": request.user.account_balance,
     }
@@ -83,25 +78,16 @@ class EbouticCommand(TemplateView):
     def get(self, request, *args, **kwargs):
         return redirect("eboutic:main")
 
-    @staticmethod
-    def __check_cookies(cookies: list) -> None:
-        if len(cookies) == 0:
-            raise CookieEmpty()
-        for cookie in cookies:
-            if any(key not in cookie for key in ("id", "quantity")):
-                raise CookieImproperlyFormatted()
-            if cookie["quantity"] < 0:
-                raise CookieNegativeIndex()
-
     @method_decorator(login_required)
     def post(self, request: HttpRequest, *args, **kwargs):
-        req_basket = json.loads(request.COOKIES.get("basket_items", "[]"))
-        try:
-            self.__check_cookies(req_basket)
-        except EbouticCookieError as e:
-            res = e.get_redirection(request)
-            res.delete_cookie("basket_items", "/eboutic")
+        form = BasketForm(request)
+        if not form.is_valid():
+            request.session["errors"] = form.get_error_messages()
+            request.session.modified = True
+            res = redirect("eboutic:main")
+            res.set_cookie("basket_items", form.get_cleaned_cookie(), path="/eboutic")
             return res
+
         if "basket_id" in request.session:
             basket, _ = Basket.objects.get_or_create(
                 id=request.session["basket_id"], user=request.user
@@ -109,20 +95,13 @@ class EbouticCommand(TemplateView):
             basket.clear()
         else:
             basket = Basket.objects.create(user=request.user)
+
         basket.save()
-        for item in req_basket:
-            eboutique = Counter.objects.get(type="EBOUTIC")
-            try:
-                product = eboutique.products.get(id=(item["id"]))
-            except Product.DoesNotExist:
-                res = redirect("eboutic:main")
-                res.delete_cookie("basket_items", "/eboutic")
-                return res
-            if not product.can_be_sold_to(request.user):
-                res = redirect("eboutic:main")
-                res.delete_cookie("basket_items", "/eboutic")
-                return res
-            basket.add_product(product, item["quantity"])
+        eboutique = Counter.objects.get(type="EBOUTIC")
+        for item in json.loads(request.COOKIES["basket_items"]):
+            basket.add_product(
+                eboutique.products.get(id=(item["id"])), item["quantity"]
+            )
         request.session["basket_id"] = basket.id
         request.session.modified = True
         kwargs["basket"] = basket

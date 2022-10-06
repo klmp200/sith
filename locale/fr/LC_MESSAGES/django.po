@@ -6197,6 +6197,35 @@ msgstr "Vider"
 msgid "Validate"
 msgstr "Valider"
 
+#: eboutic/templates/eboutic/eboutic_main.jinja:33
+msgid "Your basket has been cleaned accordingly to those errors."
+msgstr "Votre panier a été nettoyé en fonction de ces erreurs."
+
+#: eboutic/forms.py
+msgid "You have requested an invalid quantity of one or more items."
+msgstr "Vous avez demandé une quantité non valide d'un ou plusieurs articles."
+
+#: eboutic/forms.py
+msgid "You are not allowed to buy one or more items."
+msgstr "Vous n'avez pas le droit d'acheter un ou plusieurs articles."
+
+#: eboutic/forms.py
+msgid "One or more item do not exist."
+msgstr "Un ou plusieurs articles n'existent pas."
+
+#: eboutic/forms.py
+msgid "One or more items are badly formatted."
+msgstr "Un ou plusieurs articles sont mal formatés."
+
+#: eboutic/forms.py
+msgid "The request was badly formatted."
+msgstr "La requête a été mal formatée."
+
+#: eboutic/forms.py
+msgid "No cookie was found in the request to validate your basket."
+msgstr "Aucun cookie n'a été trouvé dans la demande de validation de votre panier."
+
+
 #~ msgid "Indifferent"
 #~ msgstr "Indifferent"
 
