@@ -28,6 +28,7 @@ from django.http import HttpRequest
 from django.utils.translation import gettext as _
 
 from counter.models import Counter
+from sith import settings
 
 
 class BasketForm:
@@ -95,6 +96,7 @@ class BasketForm:
             self.error_messages.add("The request was badly formatted.")
             return
         eboutique = Counter.objects.get(type="EBOUTIC")
+        user_is_subscribed = self.user.subscriptions.exists()
         for item in basket:
             expected_keys = {"id", "quantity", "name", "unit_price"}
             if type(item) is not dict or set(item.keys()) != expected_keys:
@@ -113,6 +115,16 @@ class BasketForm:
             if type(item["quantity"]) is not int or item["quantity"] < 0:
                 self.error_messages.add(
                     "You have requested an invalid quantity of one or more items."
+                )
+                continue
+            subscription = settings.SITH_PRODUCTTYPE_SUBSCRIPTION
+            if (
+                product.first().product_type_id == subscription
+                and not user_is_subscribed
+            ):
+                self.error_messages.add(
+                    "You cannot buy a subscription if you have not "
+                    "been a subscriber at least once before."
                 )
                 continue
 
