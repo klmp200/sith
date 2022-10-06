@@ -62,7 +62,9 @@ class BasketForm:
     implicitly called.
     """
 
-    json_cookie_re = re.compile(r"^\[\s*(\{\s*(\"[^\"]*\":\s*(\"[^\"]{0,64}\"|\d{0,5}\.?\d+),?\s*)*\},?\s*)*\s*\]$")
+    json_cookie_re = re.compile(
+        r"^\[\s*(\{\s*(\"[^\"]*\":\s*(\"[^\"]{0,64}\"|\d{0,5}\.?\d+),?\s*)*\},?\s*)*\s*\]$"
+    )
 
     def __init__(self, request: HttpRequest):
         self.user = request.user
