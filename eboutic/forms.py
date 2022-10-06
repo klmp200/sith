@@ -62,7 +62,7 @@ class BasketForm:
     implicitly called.
     """
 
-    flat_json_re = re.compile(r"^\[\s*(\{[^{}\]\[]*\},?\s*)*\s*\]$")
+    json_cookie_re = re.compile(r"^\[\s*(\{\s*(\"[^\"]*\":\s*(\"[^\"]{0,64}\"|\d{0,5}\.?\d+),?\s*)*\},?\s*)*\s*\]$")
 
     def __init__(self, request: HttpRequest):
         self.user = request.user
@@ -91,7 +91,7 @@ class BasketForm:
             return
         # check that the json is not nested before parsing it to make sure
         # malicious user can't ddos the server with deeply nested json
-        if not BasketForm.flat_json_re.match(basket):
+        if not BasketForm.json_cookie_re.match(basket):
             self.error_messages.add("The request was badly formatted.")
             return
         try:
