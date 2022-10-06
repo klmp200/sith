@@ -61,7 +61,7 @@ class BasketForm:
     without calling `form.clean()`. In this case, the latter method shall be
     implicitly called.
     """
-    flat_json_re = re.compile(r"^\[\{[^{}\]\[]*\},?\]$")
+    flat_json_re = re.compile(r"^\[\{[^{}\]\[]*\},?\s*\]$")
 
     def __init__(self, request: HttpRequest):
         self.user = request.user
