@@ -6222,8 +6222,8 @@ msgid "The request was badly formatted."
 msgstr "La requête a été mal formatée."
 
 #: eboutic/forms.py
-msgid "No cookie was found in the request to validate your basket."
-msgstr "Aucun cookie n'a été trouvé dans la demande de validation de votre panier."
+msgid "You have no basket."
+msgstr "Vous n'avez pas de panier."
 
 
 #~ msgid "Indifferent"

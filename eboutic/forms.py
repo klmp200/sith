@@ -85,10 +85,9 @@ class BasketForm:
             - all the quantities are positive integers
         """
         basket = self.cookies.get("basket_items", None)
-        if basket is None:
-            self.error_messages.add(
-                "No cookie was found in the request to validate your basket."
-            )
+        print(basket)
+        if basket is None or basket in ("[]", ""):
+            self.error_messages.add("You have no basket")
             return
         # check that the json is not nested before parsing it to make sure
         # malicious user can't ddos the server with deeply nested json
