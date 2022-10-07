@@ -29,6 +29,7 @@ class PaymentResultConverter:
     either ``/eboutic/pay/success/`` or ``/eboutic/pay/failure/``
     but nothing else.
     """
+
     regex = "(success|failure)"
 
     def to_python(self, value):
