@@ -40,7 +40,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, View
 
-from counter.models import Customer, Counter, Selling, Product
+from core.models import Group
+from counter.models import Customer, Counter, Selling
 from eboutic.forms import BasketForm
 from eboutic.models import Basket, Invoice, InvoiceItem
 
@@ -48,12 +49,36 @@ from eboutic.models import Basket, Invoice, InvoiceItem
 @login_required
 @require_GET
 def eboutic_main(request: HttpRequest) -> HttpResponse:
+    """
+    Vue principale de l'application eboutic.
+    Retourne une réponse Http dont le contenu est de type text/html.
+    Ce dernier représente la page depuis laquelle un utilisateur peut
+    voir le catalogue des produits qu'il peut acheter et remplir son panier.
+    Les produits achetables sont ceux de l'eboutic qui font partie
+    d'une catégorie de produits (les produits orphelins sont inaccessibles)
+
+    """
     errors = request.session.pop("errors", None)
     products = (
         Counter.objects.get(type="EBOUTIC")
         .products.exclude(product_type__isnull=True)
+        .exclude(archived=True)
+        .filter(limit_age__lte=request.user.age)
         .annotate(category=F("product_type__name"))
     )
+    sub = request.user.subscriptions.order_by("-subscription_end").first()
+    if sub is None:  # user has never been subscriber
+        exclude = ["Subscribers", "Old subscribers"]
+        exclude = Group.objects.filter(name__in=exclude)
+        products = products.exclude(buying_groups__in=exclude)
+    elif sub.subscription_end >= datetime.date(datetime.today()):  # subscribed
+        products = products.filter(
+            buying_groups__in=Group.objects.filter(name="Subscribers")
+        )
+    else:  # user was once subscribed, but it has expired
+        products = products.filter(
+            buying_groups__in=Group.objects.filter(name="Old subscribers")
+        )
     if not request.user.subscriptions.exists():
         products = products.exclude(settings.SITH_PRODUCTTYPE_SUBSCRIPTION)
     context = {

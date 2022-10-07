@@ -466,6 +466,17 @@ class User(AbstractBaseUser):
     def is_banned_counter(self):
         return self.is_in_group(settings.SITH_GROUP_BANNED_COUNTER_ID)
 
+    @cached_property
+    def age(self) -> int:
+        today = date.today()
+        age = today.year - self.date_of_birth.year
+        # remove a year if this year's birthday is yet to come
+        age -= (today.month, today.day) < (
+            self.date_of_birth.month,
+            self.date_of_birth.day,
+        )
+        return age
+
     def save(self, *args, **kwargs):
         create = False
         with transaction.atomic():
