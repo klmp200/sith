@@ -185,7 +185,7 @@
               </div>
               <a href="{{ url('forum:main') }}">{% trans %}Forum{% endtrans %}</a>
               <a href="{{ url('sas:main') }}">{% trans %}Gallery{% endtrans %}</a>
-              {% if perms.eboutic.can_view_eboutic %}
+              {% if request.user.is_authenticated %}
                   <a href="{{ url('eboutic:main') }}">{% trans %}Eboutic{% endtrans %}</a>
               {% endif %}
               <div class="dropdown">

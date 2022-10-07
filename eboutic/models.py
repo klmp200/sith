@@ -34,20 +34,6 @@ from core.models import User
 from counter.models import Counter, Product, Selling, Refilling
 
 
-class Eboutic(models.Model):
-    """
-    Dummy model with no real data in it
-    (thus no created table when applying a migration).
-    This is only used in order to set some permissions
-    for the whole application.
-    (you can get a glimpse of this workaround here :
-    https://stackoverflow.com/questions/13932774/how-can-i-use-django-permissions-without-defining-a-content-type-or-model)
-    """
-    class Meta:
-        managed = False
-        default_permissions = ("view",)
-
-
 class Basket(models.Model):
     """
     Basket is built when the user connects to an eboutic page
