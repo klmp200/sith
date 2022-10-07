@@ -50,13 +50,20 @@ from eboutic.models import Basket, Invoice, InvoiceItem
 @require_GET
 def eboutic_main(request: HttpRequest) -> HttpResponse:
     """
-    Vue principale de l'application eboutic.
-    Retourne une réponse Http dont le contenu est de type text/html.
-    Ce dernier représente la page depuis laquelle un utilisateur peut
-    voir le catalogue des produits qu'il peut acheter et remplir son panier.
-    Les produits achetables sont ceux de l'eboutic qui font partie
-    d'une catégorie de produits (les produits orphelins sont inaccessibles)
+    Main view of the eboutic application.
+    Return an Http response whose content is of type text/html.
+    The latter represents the page from which a user can see
+    the catalogue of products that he can buy and fill
+    his shopping cart.
 
+    The purchasable products are those of the eboutic which
+    belong to a category of products of a product category
+    (orphan products are inaccessible).
+
+    If the session contains a key-value pair that associates "errors"
+    with a list of strings, this to a list of strings,
+    this pair is removed from the session and its value displayed
+    to the user when the page is rendered.
     """
     errors = request.session.pop("errors", None)
     products = (

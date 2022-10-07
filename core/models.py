@@ -468,6 +468,9 @@ class User(AbstractBaseUser):
 
     @cached_property
     def age(self) -> int:
+        """
+        Return the age this user has the day the method is called.
+        """
         today = date.today()
         age = today.year - self.date_of_birth.year
         # remove a year if this year's birthday is yet to come

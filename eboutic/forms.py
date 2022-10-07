@@ -24,6 +24,7 @@
 
 import json
 import re
+import typing
 
 from django.http import HttpRequest
 from django.utils.translation import gettext as _
@@ -43,25 +44,34 @@ class BasketForm:
     Thus this class is a pure standalone and performs its operations by its own means.
     However, it still tries to share some similarities with a standard django Form.
 
-    Usage example: ::
+    Example:
+        ::
 
-        def my_view(request):
-            form = BasketForm(request)
-            form.clean()
-            if form.is_valid():
-                # perform operations
-            else:
-                errors = form.get_error_messages()
+            def my_view(request):
+                form = BasketForm(request)
+                form.clean()
+                if form.is_valid():
+                    # perform operations
+                else:
+                    errors = form.get_error_messages()
 
-                # return the cookie that was in the request, but with all
-                # incorrects elements removed
-                cookie = form.get_cleaned_cookie()
+                    # return the cookie that was in the request, but with all
+                    # incorrects elements removed
+                    cookie = form.get_cleaned_cookie()
 
     You can also use a little shortcut by directly calling `form.is_valid()`
     without calling `form.clean()`. In this case, the latter method shall be
     implicitly called.
     """
 
+    # check the json is an array containing non-nested objects.
+    # values must be strings or numbers
+    # this is matched :
+    # [{"id": 4, "name": "[PROMO 22] badges", "unit_price": 2.3, "quantity": 2}]
+    # and this is not :
+    # [{"id": {"nested_id": 10}, "name": "[PROMO 22] badges", "unit_price": 2.3, "quantity": 2}]
+    # and neither does this :
+    # [{"id": ["nested_id": 10], "name": "[PROMO 22] badges", "unit_price": 2.3, "quantity": 2}]
     json_cookie_re = re.compile(
         r"^\[\s*(\{\s*(\"[^\"]*\":\s*(\"[^\"]{0,64}\"|\d{0,5}\.?\d+),?\s*)*\},?\s*)*\s*\]$"
     )
@@ -72,7 +82,7 @@ class BasketForm:
         self.error_messages = set()
         self.correct_cookie = []
 
-    def clean(self):
+    def clean(self) -> None:
         """
         Perform all the check, but return nothing.
         To know if the form is valid, the `is_valid()` method must be used.
@@ -87,7 +97,6 @@ class BasketForm:
             - all the quantities are positive integers
         """
         basket = self.cookies.get("basket_items", None)
-        print(basket)
         if basket is None or basket in ("[]", ""):
             self.error_messages.add("You have no basket")
             return
@@ -141,7 +150,7 @@ class BasketForm:
             self.correct_cookie.append(item)
             # for loop for item checking ends here
 
-    def is_valid(self) -> True:
+    def is_valid(self) -> bool:
         """
         return True if the form is correct else False.
         If the `clean()` method has not been called beforehand, call it
@@ -152,10 +161,10 @@ class BasketForm:
             return False
         return True
 
-    def get_error_messages(self):
+    def get_error_messages(self) -> typing.List[str]:
         return [_(msg) for msg in self.error_messages]
 
-    def get_cleaned_cookie(self):
+    def get_cleaned_cookie(self) -> str:
         if not self.correct_cookie:
             return ""
         return json.dumps(self.correct_cookie)
