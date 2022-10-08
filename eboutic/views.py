@@ -61,9 +61,8 @@ def eboutic_main(request: HttpRequest) -> HttpResponse:
     (orphan products are inaccessible).
 
     If the session contains a key-value pair that associates "errors"
-    with a list of strings, this to a list of strings,
-    this pair is removed from the session and its value displayed
-    to the user when the page is rendered.
+    with a list of strings, this pair is removed from the session
+    and its value displayed to the user when the page is rendered.
     """
     errors = request.session.pop("errors", None)
     products = (

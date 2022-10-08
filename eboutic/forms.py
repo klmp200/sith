@@ -127,19 +127,17 @@ class BasketForm:
             if not product.exists():
                 self.error_messages.add("One or more item do not exist.")
                 continue
-            if not product.first().can_be_sold_to(self.user):
+            product = product.first()
+            if not product.can_be_sold_to(self.user):
                 self.error_messages.add("You are not allowed to buy one or more items.")
                 continue
             if type(item["quantity"]) is not int or item["quantity"] < 0:
                 self.error_messages.add(
-                    "You have requested an invalid quantity of one or more items."
+                    "You have requested an invalid " "quantity of one or more items."
                 )
                 continue
             subscription = settings.SITH_PRODUCTTYPE_SUBSCRIPTION
-            if (
-                product.first().product_type_id == subscription
-                and not user_is_subscribed
-            ):
+            if product.product_type_id == subscription and not user_is_subscribed:
                 self.error_messages.add(
                     "You cannot buy a subscription if you have not "
                     "been a subscriber at least once before."
