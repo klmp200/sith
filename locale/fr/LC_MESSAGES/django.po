@@ -6202,16 +6202,12 @@ msgid "Your basket has been cleaned accordingly to those errors."
 msgstr "Votre panier a été nettoyé en fonction de ces erreurs."
 
 #: eboutic/forms.py
-msgid "You have requested an invalid quantity of one or more items."
-msgstr "Vous avez demandé une quantité non valide d'un ou plusieurs articles."
+msgid "You cannot buy %(nbr)d %(name)%s."
+msgstr "Vous ne pouvez pas acheter %(nbr)d %(name)s."
 
 #: eboutic/forms.py
-msgid "You are not allowed to buy one or more items."
-msgstr "Vous n'avez pas le droit d'acheter un ou plusieurs articles."
-
-#: eboutic/forms.py
-msgid "One or more item do not exist."
-msgstr "Un ou plusieurs articles n'existent pas."
+msgid "%(name)s : you are not allowed to buy this product."
+msgstr "%(name)s : vous n'avez pas le droit d'acheter ce produit."
 
 #: eboutic/forms.py
 msgid "One or more items are badly formatted."
@@ -6222,12 +6218,17 @@ msgid "The request was badly formatted."
 msgstr "La requête a été mal formatée."
 
 #: eboutic/forms.py
+msgid "The basket cookie was badly formatted."
+msgstr "Le cookie du panier a été mal formaté."
+
+#: eboutic/forms.py
 msgid "You have no basket."
 msgstr "Vous n'avez pas de panier."
 
+#: eboutic/forms.py
+msgid "Your basket is empty."
+msgstr "Votre panier est vide"
 
-#~ msgid "Indifferent"
-#~ msgstr "Indifferent"
-
-#~ msgid "Sex"
-#~ msgstr "Sexe"
+#: eboutic/forms.py
+msgid "%(name)s : this product does not exist."
+msgstr "%(name)s : ce produit n'existe pas."

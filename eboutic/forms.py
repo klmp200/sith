@@ -68,10 +68,12 @@ class BasketForm:
     # values must be strings or numbers
     # this is matched :
     # [{"id": 4, "name": "[PROMO 22] badges", "unit_price": 2.3, "quantity": 2}]
-    # and this is not :
+    # but this is not :
     # [{"id": {"nested_id": 10}, "name": "[PROMO 22] badges", "unit_price": 2.3, "quantity": 2}]
     # and neither does this :
     # [{"id": ["nested_id": 10], "name": "[PROMO 22] badges", "unit_price": 2.3, "quantity": 2}]
+    # and neither does that :
+    # [{"id": null, "name": "[PROMO 22] badges", "unit_price": 2.3, "quantity": 2}]
     json_cookie_re = re.compile(
         r"^\[\s*(\{\s*(\"[^\"]*\":\s*(\"[^\"]{0,64}\"|\d{0,5}\.?\d+),?\s*)*\},?\s*)*\s*\]$"
     )
@@ -98,20 +100,22 @@ class BasketForm:
         """
         basket = self.cookies.get("basket_items", None)
         if basket is None or basket in ("[]", ""):
-            self.error_messages.add("You have no basket")
+            self.error_messages.add(_("You have no basket."))
             return
         # check that the json is not nested before parsing it to make sure
         # malicious user can't ddos the server with deeply nested json
         if not BasketForm.json_cookie_re.match(basket):
-            self.error_messages.add("The request was badly formatted.")
+            self.error_messages.add(_("The request was badly formatted."))
             return
         try:
             basket = json.loads(basket)
         except json.JSONDecodeError:
-            self.error_messages.add("The request was badly formatted.")
+            self.error_messages.add(
+                _("The basket cookie was badly formatted.")
+            )
             return
         if type(basket) is not list or len(basket) == 0:
-            self.error_messages.add("The request was badly formatted.")
+            self.error_messages.add(_("Your basket is empty."))
             return
         eboutique = Counter.objects.get(type="EBOUTIC")
         user_is_subscribed = self.user.subscriptions.exists()
@@ -120,33 +124,54 @@ class BasketForm:
             if type(item) is not dict or set(item.keys()) != expected_keys:
                 self.error_messages.add("One or more items are badly formatted.")
                 continue
+            # check the id field is a positive integer
             if type(item["id"]) is not int or item["id"] < 0:
-                self.error_messages.add("One or more item do not exist.")
+                self.error_messages.add(
+                    _("%(name)s : this product does not exist.")
+                    % {"name": item["name"]}
+                )
                 continue
+            # check a product with this id does exist
             product = eboutique.products.filter(id=(item["id"]))
             if not product.exists():
-                self.error_messages.add("One or more item do not exist.")
+                self.error_messages.add(
+                    _("%(name)s : this product does not exist.")
+                    % {"name": item["name"]}
+                )
                 continue
             product = product.first()
             if not product.can_be_sold_to(self.user):
-                self.error_messages.add("You are not allowed to buy one or more items.")
+                self.error_messages.add(
+                    _("%(name)s : you are not allowed to buy this product.")
+                    % {"name": item["name"]}
+                )
                 continue
             if type(item["quantity"]) is not int or item["quantity"] < 0:
                 self.error_messages.add(
-                    "You have requested an invalid " "quantity of one or more items."
+                    _("You cannot buy %(nbr)d %(name)%s.")
+                    % {"nbr": item["quantity"], "name": item["name"]}
                 )
                 continue
             subscription = settings.SITH_PRODUCTTYPE_SUBSCRIPTION
             if product.product_type_id == subscription and not user_is_subscribed:
                 self.error_messages.add(
-                    "You cannot buy a subscription if you have not "
-                    "been a subscriber at least once before."
+                    _(
+                        "You cannot buy a subscription if you have not "
+                        "been a subscriber at least once before."
+                    )
                 )
                 continue
 
             # if we arrive here, it means this item has passed all tests
             self.correct_cookie.append(item)
-            # for loop for item checking ends here
+        # for loop for item checking ends here
+
+        # this function does not return anything.
+        # instead, it fills a set containing the collected error messages
+        # an empty set means that no error was seen thus everything is ok
+        # and the form is valid.
+        # a non-empty set means there was at least one error thus
+        # the form is invalid
 
     def is_valid(self) -> bool:
         """
@@ -160,7 +185,8 @@ class BasketForm:
         return True
 
     def get_error_messages(self) -> typing.List[str]:
-        return [_(msg) for msg in self.error_messages]
+        # return [msg for msg in self.error_messages]
+        return list(self.error_messages)
 
     def get_cleaned_cookie(self) -> str:
         if not self.correct_cookie:
