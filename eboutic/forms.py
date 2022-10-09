@@ -110,9 +110,7 @@ class BasketForm:
         try:
             basket = json.loads(basket)
         except json.JSONDecodeError:
-            self.error_messages.add(
-                _("The basket cookie was badly formatted.")
-            )
+            self.error_messages.add(_("The basket cookie was badly formatted."))
             return
         if type(basket) is not list or len(basket) == 0:
             self.error_messages.add(_("Your basket is empty."))
