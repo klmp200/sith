@@ -33,17 +33,15 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import SuspiciousOperation
 from django.db import transaction, DatabaseError
-from django.db.models import F
 from django.http import HttpResponse, HttpRequest
 from django.shortcuts import render, redirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import TemplateView, View
 
-from core.models import Group
 from counter.models import Customer, Counter, Selling
 from eboutic.forms import BasketForm
-from eboutic.models import Basket, Invoice, InvoiceItem
+from eboutic.models import Basket, Invoice, InvoiceItem, get_eboutic_products
 
 
 @login_required
@@ -65,28 +63,7 @@ def eboutic_main(request: HttpRequest) -> HttpResponse:
     and its value displayed to the user when the page is rendered.
     """
     errors = request.session.pop("errors", None)
-    products = (
-        Counter.objects.get(type="EBOUTIC")
-        .products.exclude(product_type__isnull=True)
-        .exclude(archived=True)
-        .filter(limit_age__lte=request.user.age)
-        .annotate(category=F("product_type__name"))
-    )
-    sub = request.user.subscriptions.order_by("-subscription_end").first()
-    if sub is None:  # user has never been subscriber
-        exclude = ["Subscribers", "Old subscribers"]
-        exclude = Group.objects.filter(name__in=exclude)
-        products = products.exclude(buying_groups__in=exclude)
-    elif sub.subscription_end >= datetime.date(datetime.today()):  # subscribed
-        products = products.filter(
-            buying_groups__in=Group.objects.filter(name="Subscribers")
-        )
-    else:  # user was once subscribed, but it has expired
-        products = products.filter(
-            buying_groups__in=Group.objects.filter(name="Old subscribers")
-        )
-    if not request.user.subscriptions.exists():
-        products = products.exclude(settings.SITH_PRODUCTTYPE_SUBSCRIPTION)
+    products = get_eboutic_products(request.user)
     context = {
         "errors": errors,
         "products": products,

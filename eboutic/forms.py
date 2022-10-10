@@ -29,8 +29,7 @@ import typing
 from django.http import HttpRequest
 from django.utils.translation import gettext as _
 
-from counter.models import Counter
-from sith import settings
+from eboutic.models import get_eboutic_products
 
 
 class BasketForm:
@@ -98,6 +97,9 @@ class BasketForm:
             - all the ids refer to products the user is allowed to buy
             - all the quantities are positive integers
         """
+        allowed_product_ids = [
+            product.id for product in get_eboutic_products(self.user)
+        ]
         basket = self.cookies.get("basket_items", None)
         if basket is None or basket in ("[]", ""):
             self.error_messages.add(_("You have no basket."))
@@ -115,8 +117,6 @@ class BasketForm:
         if type(basket) is not list or len(basket) == 0:
             self.error_messages.add(_("Your basket is empty."))
             return
-        eboutique = Counter.objects.get(type="EBOUTIC")
-        user_is_subscribed = self.user.subscriptions.exists()
         for item in basket:
             expected_keys = {"id", "quantity", "name", "unit_price"}
             if type(item) is not dict or set(item.keys()) != expected_keys:
@@ -130,17 +130,11 @@ class BasketForm:
                 )
                 continue
             # check a product with this id does exist
-            product = eboutique.products.filter(id=(item["id"]))
-            if not product.exists():
+            if not item["id"] in allowed_product_ids:
                 self.error_messages.add(
-                    _("%(name)s : this product does not exist.")
-                    % {"name": item["name"]}
-                )
-                continue
-            product = product.first()
-            if not product.can_be_sold_to(self.user):
-                self.error_messages.add(
-                    _("%(name)s : you are not allowed to buy this product.")
+                    _(
+                        "%(name)s : this product does not exist or may no longer be available."
+                    )
                     % {"name": item["name"]}
                 )
                 continue
@@ -148,15 +142,6 @@ class BasketForm:
                 self.error_messages.add(
                     _("You cannot buy %(nbr)d %(name)%s.")
                     % {"nbr": item["quantity"], "name": item["name"]}
-                )
-                continue
-            subscription = settings.SITH_PRODUCTTYPE_SUBSCRIPTION
-            if product.product_type_id == subscription and not user_is_subscribed:
-                self.error_messages.add(
-                    _(
-                        "You cannot buy a subscription if you have not "
-                        "been a subscriber at least once before."
-                    )
                 )
                 continue
 

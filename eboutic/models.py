@@ -22,6 +22,8 @@
 #
 #
 import typing
+from datetime import datetime
+from typing import List
 
 from django.conf import settings
 from django.db import models, DataError
@@ -30,8 +32,26 @@ from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
 from accounting.models import CurrencyField
-from core.models import User
+from core.models import Group, User
 from counter.models import Counter, Product, Selling, Refilling
+
+
+# [{"id":3,"name":"Rechargement 15 €","quantity":1,"unit_price":15}]
+
+
+def get_eboutic_products(user: User) -> List[Product]:
+    products = (
+        Counter.objects.get(type="EBOUTIC")
+        .products.exclude(product_type__isnull=True)
+        .exclude(archived=True)
+        .filter(limit_age__lte=user.age)
+        .annotate(category=F("product_type__name"))
+    ).all()
+    sub = user.subscriptions.order_by("-subscription_end").first()
+    if not user.subscriptions.exists():
+        products = products.exclude(id=settings.SITH_PRODUCTTYPE_SUBSCRIPTION)
+
+    return list(filter(lambda p: p.can_be_sold_to(user), products))
 
 
 class Basket(models.Model):
